@@ -10,7 +10,8 @@ namespace Primes.Networking
     public class Network
     {
         public List<INetworkDevice> devices;
-        private List<DivideTask> tasks;
+        public List<DivideTask> tasks;
+        public int waitTime = 100;
 
         public bool ipInUse(byte[] ip4)
         {
@@ -37,10 +38,10 @@ namespace Primes.Networking
         }
         public bool IsDivisible(BigInteger Dividend, BigInteger Divisor)
         {
-            int id = tasks.Count();
+            int id = tasks.Count;
             tasks.Add(new DivideTask(Dividend, Divisor, id));
 
-            while (!isDone()) Thread.Sleep(100);
+            while (!isDone()) Thread.Sleep(waitTime);
 
             return result();
 
@@ -63,17 +64,40 @@ namespace Primes.Networking
                 throw new Exception();
             }
         }
+        
+        public DivideTask GetTask(DivisibilityChecker dc)
+        {
+            while (true)
+            {
+                for (int i = 0; i < tasks.Count; i++)
+                {
+                    if (!tasks[i].Processing & !tasks[i].Done)
+                    {
+                        tasks[i].Processing = true;
+                        tasks[i].DcId = dc.Id;
+                        return tasks[i];
+                    }
+                }
+                Console.WriteLine(dc.Ipv4 + " Čeká na task!");
+                Thread.Sleep(waitTime);
+            }
+        }
 
         public void AddDatabase(string connString, byte[] ipv4, int id) { devices.Add(new Database(connString, ipv4, id)); }
         public void AddDivisibilityChecker(string baseAddress, byte[] ipv4, int id) { devices.Add(new DivisibilityChecker(baseAddress, ipv4, id)); }
 
-        public Network(bool scan) 
+        public Network(bool scan, int waitTime) 
         {
-            if(scan)
-            devices = new List<INetworkDevice>();
+            this.waitTime = waitTime;
+
+            if(scan) devices = new List<INetworkDevice>();
         }
         private void ScanNetwork()
         {
+            var db = new Database("http://26.26.26.26/", new byte[] { 26, 26, 26, 26 }, devices.Count);
+
+            if (db.Online) devices.Add(db);
+
             for (int i = 0; i <= 255; i++)
             {
                 string baseAdress = "http://10.0.1." + i + "/";
@@ -83,6 +107,7 @@ namespace Primes.Networking
             }
                                     
         }
+        
     }
     public class DivideTask
     {
