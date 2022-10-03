@@ -65,6 +65,11 @@ namespace Primes.Networking
         {
             return await client.GetAsync("state");
         }
+        public static bool DCExists(string baseAdress, byte[] ip4)
+        {
+            var dc = new DivisibilityChecker(baseAdress, ip4, 0);
+            return dc.Online;
+        }
     }
     public class DUnit
     {

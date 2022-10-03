@@ -7,6 +7,11 @@ string connStringDB = "server=PrimesDB; port=3306; database=sys; ";
 
 app.MapGet("/", () => "Hello World!");
 
+app.MapGet("/GetTask", () =>
+{
+
+});
+
 app.Run();
 
 var Pnet = new Network();
