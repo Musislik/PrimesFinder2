@@ -10,18 +10,23 @@ namespace Primes.PrimesFinder
         BigInteger lastPrime;
         Network network;
 
-        PrimesFinder(MySqlCom sql, Network network)
+        public PrimesFinder(MySqlCom sql, Network network)
         {
             this.network = network;
             this.sql = sql;
             this.lastPrime = sql.LastPrime;
         }
 
-        bool IsPrime(BigInteger number)
+        public bool IsPrime(BigInteger number)
         {
             int i = 0;
             do
             {
+                while (network.tasks.Count >= network.tasksLimit)
+                {
+                    Console.WriteLine("waiting... Max tasks");
+                    Thread.Sleep(100);
+                }
                 var divisor = sql.PrimeReader(i);
                 if (BigInteger.Multiply(divisor, divisor) < number) i++;
                 else return true;
@@ -30,10 +35,5 @@ namespace Primes.PrimesFinder
             while(true);
         }
 
-    }
-    public class Prime
-    {
-        BigInteger value;
-        int ID, size;        
     }
 }

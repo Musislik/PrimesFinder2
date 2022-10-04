@@ -12,6 +12,7 @@ namespace Primes.Networking
         public List<INetworkDevice> devices;
         public List<DivideTask> tasks;
         public int waitTime = 100;
+        public int tasksLimit = 1000;
 
         public bool ipInUse(byte[] ip4)
         {
@@ -78,7 +79,7 @@ namespace Primes.Networking
                         return tasks[i];
                     }
                 }
-                Console.WriteLine(dc.Ipv4 + " Čeká na task!");
+                Console.WriteLine("{0}.{1}.{2}.{3} Čeká na task!", dc.Ipv4[0],dc.Ipv4[1],dc.Ipv4[2],dc.Ipv4[3]);
                 Thread.Sleep(waitTime);
             }
         }
@@ -86,24 +87,37 @@ namespace Primes.Networking
         public void AddDatabase(string connString, byte[] ipv4, int id) { devices.Add(new Database(connString, ipv4, id)); }
         public void AddDivisibilityChecker(string baseAddress, byte[] ipv4, int id) { devices.Add(new DivisibilityChecker(baseAddress, ipv4, id)); }
 
-        public Network(bool scan, int waitTime) 
+        public Network(bool scan, int waitTime, int tasksLimit) 
         {
+            this.tasksLimit = tasksLimit;
             this.waitTime = waitTime;
 
             if(scan) devices = new List<INetworkDevice>();
+            tasks = new List<DivideTask>();
         }
         private void ScanNetwork()
         {
             var db = new Database("http://26.26.26.26/", new byte[] { 26, 26, 26, 26 }, devices.Count);
 
-            if (db.Online) devices.Add(db);
+            if (db.Online)
+            {
+
+                devices.Add(db);
+                Console.WriteLine("DB přidána!");
+            }
 
             for (int i = 0; i <= 255; i++)
             {
                 string baseAdress = "http://10.0.1." + i + "/";
                 byte[] ip = { 26, 0, 1, Convert.ToByte(i) };
 
-                if (DivisibilityChecker.DCExists(baseAdress, ip) & !ipInUse(ip)) devices.Add(new DivisibilityChecker(baseAdress, ip, devices.Count));               
+                if (DivisibilityChecker.DCExists(baseAdress, ip) & !ipInUse(ip))
+                {
+                    var newDev = new DivisibilityChecker(baseAdress, ip, devices.Count);
+                    devices.Add(newDev);
+                    newDev.Setup().Wait();
+                    Console.WriteLine("DC{0} pridano, ip:{1}.{2}.{3}.{4}", devices.Count - 1, ip[1], ip[2], ip[3], ip[4]);
+                }
             }
                                     
         }
@@ -127,5 +141,5 @@ namespace Primes.Networking
             this.Processing = false;
             this.Done = false;
         }
-    }
+    }    
 }

@@ -56,7 +56,7 @@ namespace Primes.Networking
             this.client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
-        //PF metody
+        //DC metody
         public async Task<HttpResponseMessage> StartQuery(DUnit res)
         {
             return await client.PostAsJsonAsync("start", res);
@@ -64,6 +64,10 @@ namespace Primes.Networking
         public async Task<HttpResponseMessage> GetDCState()
         {
             return await client.GetAsync("state");
+        }
+        public async Task<HttpResponseMessage> Setup()
+        {
+            return await client.PostAsJsonAsync("setup", new DcConfiguration(this.baseAddress, this.id, this.ipv4));
         }
         public static bool DCExists(string baseAdress, byte[] ip4)
         {
@@ -80,6 +84,19 @@ namespace Primes.Networking
             this.IsBig = isBig;
             this.Dividend = dividend;
             this.Divisor = divisor;
+        }
+    }
+    internal class DcConfiguration
+    {
+        string baseAdress;
+        int id;
+        byte[] ip4;
+
+        public DcConfiguration(string baseAdress, int id, byte[] ip4)
+        {
+            this.baseAdress = baseAdress;
+            this.id = id;
+            this.ip4 = ip4;
         }
     }
 }
