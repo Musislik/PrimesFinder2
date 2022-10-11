@@ -14,10 +14,10 @@ namespace Primes.Networking
     {
         //Private
 
-        private int id;
+        private uint id;
         private byte[] ipv4, ipv6;
         private const DeviceType devType = DeviceType.DivisibilityChecker;
-        private string baseAddress;
+        public string baseAddress;
         private HttpClient client = new HttpClient();
 
         //Public
@@ -38,14 +38,24 @@ namespace Primes.Networking
                 
             }
         }
-        public int Id { get { return id; } }
+        public bool IsBusy
+        {
+            get
+            {
+                var dc = GetDCState();
+                if (dc.Result.Content.ReadAsStringAsync().Result == "false") return false;
+                if (dc.Result.Content.ReadAsStringAsync().Result == "true") return true;
+                else throw new Exception("IsBusy error");
+            }
+        }
+        public uint Id { get { return id; } }
         public byte[] Ipv4 { get { return ipv4; } }
         public byte[] Ipv6 { get { return ipv6; } }
         public DeviceType DevType { get { return devType; } }
 
         //Konstrukor
 
-        public DivisibilityChecker(string baseAddress, byte[] ipv4, int id)
+        public DivisibilityChecker(string baseAddress, byte[] ipv4, uint id)
         {
             this.baseAddress = baseAddress;
             this.ipv4 = ipv4;
@@ -59,10 +69,11 @@ namespace Primes.Networking
         //DC metody
         public async Task<HttpResponseMessage> StartQuery(DUnit res)
         {
-            return await client.PostAsJsonAsync("start", res);
+            return await client.PostAsJsonAsync("divisibility", res);
         }
         public async Task<HttpResponseMessage> GetDCState()
         {
+            client.Timeout = TimeSpan.FromMilliseconds(100);
             return await client.GetAsync("state");
         }
         public async Task<HttpResponseMessage> Setup()
@@ -79,24 +90,11 @@ namespace Primes.Networking
     {
         public BigInteger Divisor, Dividend;
         public bool IsBig;
-        DUnit(BigInteger divisor, BigInteger dividend, bool isBig)
+        public DUnit(BigInteger divisor, BigInteger dividend, bool isBig)
         {
             this.IsBig = isBig;
             this.Dividend = dividend;
             this.Divisor = divisor;
         }
-    }
-    internal class DcConfiguration
-    {
-        string baseAdress;
-        int id;
-        byte[] ip4;
-
-        public DcConfiguration(string baseAdress, int id, byte[] ip4)
-        {
-            this.baseAdress = baseAdress;
-            this.id = id;
-            this.ip4 = ip4;
-        }
-    }
+    }    
 }

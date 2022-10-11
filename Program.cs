@@ -23,17 +23,60 @@ app.MapGet("/start", () =>
     }
 
 });
-
-app.MapGet("/GetTask", (DcID dcID) =>
+app.MapPost("/GetTask", (DcConfiguration DcConfig) =>
 {
-    var Pnet = new Network(true, 100, 1000);
-    return Pnet.GetTask(new DivisibilityChecker("http://78456", new byte[] {26,26,26,26 }, 0));
+    return network.GetTask(new DivisibilityChecker(DcConfig.baseAdress, DcConfig.ip4, DcConfig.id));
+});
+
+app.MapGet("/mysql/reset", () =>
+{
+    Console.WriteLine("Reset DB!");
+    try
+    {
+        sql.dbReset();
+    }
+    catch (Exception)
+    {
+        return 400;
+    }
+    return 200;
+});
+app.MapGet("/mysql/setup", () =>
+{
+    Console.WriteLine("Setup DB!");
+    try
+    {
+        sql.dbSetup();
+    }
+    catch (Exception)
+    {
+        return 400;
+    }
+    return 200;
+});
+
+app.MapGet("/mysql/get/state", () =>
+{
+    Console.WriteLine("Sql state: " + sql.State);
+    return sql.State;
+});
+app.MapGet("/mysql/get/connstring", () =>
+{
+    Console.WriteLine("Conn string: " + sql.ConnString);
+    return sql.ConnString;
+});
+app.MapPost("/mysql/set/connString", (string connString) =>
+{
+    Console.WriteLine("Creating new connection client with new connection string: " + connString);
+    try
+    {
+        sql = new MySqlCom(connString);
+    }
+    catch (Exception)
+    {
+        return StatusCodes.Status400BadRequest;
+    }
+    return StatusCodes.Status200OK;
 });
 
 app.Run();
-
-
-public class DcID
-{
-    
-}

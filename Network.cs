@@ -9,6 +9,7 @@ namespace Primes.Networking
 {
     public class Network
     {
+        
         public List<INetworkDevice> devices;
         public List<DivideTask> tasks;
         public int waitTime = 100;
@@ -37,14 +38,16 @@ namespace Primes.Networking
                 if (device.DevType == DeviceType.DivisibilityChecker) yield return device;
             }
         }
-        public bool IsDivisible(BigInteger Dividend, BigInteger Divisor)
+        public async Task<bool> IsDivisible(BigInteger Dividend, BigInteger Divisor)
         {
             int id = tasks.Count;
             tasks.Add(new DivideTask(Dividend, Divisor, id));
 
             while (!isDone()) Thread.Sleep(waitTime);
 
-            return result();
+            var res = result();
+
+            return res;
 
             bool result()
             {
@@ -60,7 +63,6 @@ namespace Primes.Networking
                 foreach (var task in tasks)
                 {
                     if (task.ID == id) return task.Done;
-                    else throw new Exception();
                 }
                 throw new Exception();
             }
@@ -84,41 +86,100 @@ namespace Primes.Networking
             }
         }
 
-        public void AddDatabase(string connString, byte[] ipv4, int id) { devices.Add(new Database(connString, ipv4, id)); }
-        public void AddDivisibilityChecker(string baseAddress, byte[] ipv4, int id) { devices.Add(new DivisibilityChecker(baseAddress, ipv4, id)); }
+        public List<DivideTask> SendTask (List<DivideTask> input)
+        {
+
+            DivideTask freeDivideTask(List<DivideTask> input)
+            {
+                foreach (var task in input)
+                {
+                    if (!task.Done & !task.Processing) return task;
+                }
+                return null;
+            }
+
+            DivisibilityChecker freeDc(List<INetworkDevice> input)
+            {
+                foreach (var device in input)
+                    if (device.DevType == DeviceType.DivisibilityChecker)
+                    {
+                        if (!((DivisibilityChecker)device).IsBusy)
+                        {
+                            return (DivisibilityChecker)device;
+                        }
+                    }
+                return null;
+            }
+
+            while (true)
+            {
+                var task = freeDivideTask(input);
+                if (task != null)
+                {
+                    var dc = freeDc(devices);
+                    if (dc != null) task.SendTask(dc);
+                    else break;
+                }
+                else break;
+            }
+
+            return input;
+        }
+
+        public void ReturnTaskResult(DivideTaskResult result)
+        {
+            bool TaskMatch(DivideTask divideTask)
+            {
+                return (divideTask.ID == result.ID);
+            }
+            int index = tasks.FindIndex(task => task.ID == result.ID);
+
+            
+            tasks[index].Result = result.Result;
+            tasks[index].Done = true;
+            tasks[index].Processing = false;
+        }
+        
+
+        public void AddDatabase(string connString, byte[] ipv4, uint id) { devices.Add(new Database(connString, ipv4, id)); }
+        public void AddDivisibilityChecker(string baseAddress, byte[] ipv4, uint id) { devices.Add(new DivisibilityChecker(baseAddress, ipv4, id)); }
 
         public Network(bool scan, int waitTime, int tasksLimit) 
         {
             this.tasksLimit = tasksLimit;
             this.waitTime = waitTime;
 
-            if(scan) devices = new List<INetworkDevice>();
+            devices = new List<INetworkDevice>();
             tasks = new List<DivideTask>();
+
+            if (scan) ScanNetwork();            
         }
         private void ScanNetwork()
         {
-            var db = new Database("http://26.26.26.26/", new byte[] { 26, 26, 26, 26 }, devices.Count);
+            Console.WriteLine("scanning network");
+            var db = new Database("server = 26.26.26.26; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
 
             if (db.Online)
             {
 
                 devices.Add(db);
-                Console.WriteLine("DB přidána!");
+                Console.WriteLine("DB has been added!");
             }
 
-            for (int i = 0; i <= 255; i++)
+            Parallel.For(0, 255, i =>
             {
                 string baseAdress = "http://10.0.1." + i + "/";
                 byte[] ip = { 26, 0, 1, Convert.ToByte(i) };
 
                 if (DivisibilityChecker.DCExists(baseAdress, ip) & !ipInUse(ip))
                 {
-                    var newDev = new DivisibilityChecker(baseAdress, ip, devices.Count);
+                    var newDev = new DivisibilityChecker(baseAdress, ip, (uint)devices.Count);
                     devices.Add(newDev);
                     newDev.Setup().Wait();
-                    Console.WriteLine("DC{0} pridano, ip:{1}.{2}.{3}.{4}", devices.Count - 1, ip[1], ip[2], ip[3], ip[4]);
+                    Console.WriteLine("DC{0}, ip:{1}.{2}.{3}.{4}", devices.Count - 1, ip[1], ip[2], ip[3], ip[4]);
                 }
-            }
+            });
+            Console.WriteLine("Scan ended");
                                     
         }
         
@@ -129,7 +190,7 @@ namespace Primes.Networking
         public BigInteger Divisor;
         public int ID;
         public bool Processing, Done, Result;
-        public int DcId;
+        public uint DcId;
         
         public DivideTask(BigInteger Dividend, BigInteger Divisor, int ID)
         {
@@ -141,5 +202,25 @@ namespace Primes.Networking
             this.Processing = false;
             this.Done = false;
         }
-    }    
+        public void SendTask(DivisibilityChecker dc)
+        {
+            DcId = dc.Id;
+            Processing = true;
+            var result = dc.StartQuery(new DUnit(Divisor, Dividend, true));
+            Result = result.Result.Content.ReadAsStringAsync().Result == "true";
+            Processing = false;
+            Done = true;
+        }
+    }
+    public class DivideTaskResult
+    {       
+        public int ID;
+        public bool Result;
+
+        public DivideTaskResult(int ID, bool Result)
+        {
+            this.Result = Result;
+            this.ID = ID;
+        }
+    }
 }

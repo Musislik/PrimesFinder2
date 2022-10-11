@@ -20,17 +20,50 @@ namespace Primes.PrimesFinder
         public bool IsPrime(BigInteger number)
         {
             int i = 0;
+            bool tRes = false;
+            List<Task<bool>> tasksInProcess = new List<Task<bool>>();
+            
+            
             do
             {
-                while (network.tasks.Count >= network.tasksLimit)
+                while (tasksInProcess.Count >= network.tasksLimit)
                 {
                     Console.WriteLine("waiting... Max tasks");
+                    tasksCheck();
+                    if (tRes) return false;
+
+                    tasksInProcess = network.SendTask(tasksInProcess);
+
                     Thread.Sleep(100);
                 }
+
                 var divisor = sql.PrimeReader(i);
                 if (BigInteger.Multiply(divisor, divisor) < number) i++;
-                else return true;
-                if (network.IsDivisible(number, divisor)) return false;
+                else
+                {
+                    Task.WaitAll(tasksInProcess.ToArray());
+                    
+                    tasksCheck();
+
+                    if (tRes) return false;
+                    return true;
+                };
+                
+                tasksInProcess.Add(network.IsDivisible(number, divisor));
+
+                void tasksCheck()
+                {
+                    Parallel.ForEach(tasksInProcess, task =>
+                    {
+                        if (task.IsCompleted)
+                        {
+                            if (task.Result) tRes = true;
+                            else tasksInProcess.Remove(task);
+                        }
+                    });                    
+                }
+
+
             }
             while(true);
         }

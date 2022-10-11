@@ -10,22 +10,21 @@ namespace Primes.Communication
     {
         public string ConnString { get { return connString; } }
         private string connString = "";
-        public string State
+        public bool State
         {
             get
             {
                 try
                 {
                     using (var connection = new MySqlConnection(mySqlConnectionString_PrimesReader))
-                    {
-                        connection.Open();
-                        return connection.State.ToString();
+                    {                        
+                        return connection.Ping();
                     }
                 }
                 catch (Exception e)
                 {
                     Console.WriteLine(e.Message);
-                    throw;
+                    return false;
                 }
 
             }
