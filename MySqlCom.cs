@@ -18,12 +18,14 @@ namespace Primes.Communication
                 {
                     using (var connection = new MySqlConnection(mySqlConnectionString_PrimesReader))
                     {                        
-                        return connection.Ping();
+                        connection.Open();
+                        connection.Close();
+                        return true;
                     }
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e.Message);
+                    Console.WriteLine(e.Message + this.ConnString);
                     return false;
                 }
 
@@ -37,10 +39,11 @@ namespace Primes.Communication
 
         public MySqlCom(string connString)
         {
+            this.connString = connString;
             mySqlConnectionString_PrimesReader = connString + "uid = PrimesReader; pwd = 9987; charset=utf8;";
             mySqlConnectionString_PrimesWriter = connString + "uid = PrimesWriter; pwd = 9987; charset=utf8;";
             mySqlConnectionString_Root = connString + "uid = root; pwd = 9987; charset=utf8;";
-            this.connString = connString;
+            
         }
         public void dbReset()
         {

@@ -4,28 +4,26 @@ using Primes.PrimesFinder;
 using Primes.Communication;
 
 
-string connStringDB = "server=PrimesDB; port=3306; database=sys; ";
-var network = new Network(true, 100, 1000);
+string connStringDB = "Server=PrimesDB; Port=3306; Database=sys; ";
+var network = new Network(Environment.GetEnvironmentVariable("Scan") == "True", Convert.ToInt32(Environment.GetEnvironmentVariable("WaitTime")), Convert.ToInt32(Environment.GetEnvironmentVariable("TasksLimit")));
 var sql = new MySqlCom(connStringDB);
+Console.WriteLine(sql.State);
+Console.ReadLine();
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
 app.MapGet("/", () => "Hello World!");
 
-app.MapGet("/start", () => 
+app.MapGet("/start", () =>
 {
 
-    PrimesFinder pf = new PrimesFinder(new MySqlCom(connStringDB),network);
+    PrimesFinder pf = new PrimesFinder(new MySqlCom(connStringDB), network);
 
-    for (BigInteger i = sql.LastPrime + 2 ; ; i+=2)
+    for (BigInteger i = sql.LastPrime + 2; ; i += 2)
     {
-        if (pf.IsPrime(i)) sql.PrimesWriter(new List<BigInteger> {i});
+        if (pf.IsPrime(i)) sql.PrimesWriter(new List<BigInteger> { i });
     }
 
-});
-app.MapPost("/GetTask", (DcConfiguration DcConfig) =>
-{
-    return network.GetTask(new DivisibilityChecker(DcConfig.baseAdress, DcConfig.ip4, DcConfig.id));
 });
 
 app.MapGet("/mysql/reset", () =>

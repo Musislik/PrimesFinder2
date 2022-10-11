@@ -21,7 +21,7 @@ namespace Primes.PrimesFinder
         {
             int i = 0;
             bool tRes = false;
-            List<Task<bool>> tasksInProcess = new List<Task<bool>>();
+            List<DivideTask> tasksInProcess = new List<DivideTask>();
             
             
             do
@@ -41,21 +41,29 @@ namespace Primes.PrimesFinder
                 if (BigInteger.Multiply(divisor, divisor) < number) i++;
                 else
                 {
-                    Task.WaitAll(tasksInProcess.ToArray());
+                    for (int j = 0; j < tasksInProcess.Count; j++)
+                    {
+                        while (tasksInProcess[j].Processing)
+                        {
+                            Thread.Sleep(100);
+                            Console.WriteLine("Waiting...");
+                        }
+                    }
                     
                     tasksCheck();
 
                     if (tRes) return false;
                     return true;
-                };
+                }
                 
-                tasksInProcess.Add(network.IsDivisible(number, divisor));
-
+                tasksInProcess.Add(new DivideTask(number, divisor, tasksInProcess.Count));
+                tasksInProcess = network.SendTask(tasksInProcess);
+                
                 void tasksCheck()
                 {
                     Parallel.ForEach(tasksInProcess, task =>
                     {
-                        if (task.IsCompleted)
+                        if (task.Done)
                         {
                             if (task.Result) tRes = true;
                             else tasksInProcess.Remove(task);

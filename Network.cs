@@ -38,35 +38,35 @@ namespace Primes.Networking
                 if (device.DevType == DeviceType.DivisibilityChecker) yield return device;
             }
         }
-        public async Task<bool> IsDivisible(BigInteger Dividend, BigInteger Divisor)
-        {
-            int id = tasks.Count;
-            tasks.Add(new DivideTask(Dividend, Divisor, id));
+        //public async Task<bool> IsDivisible(BigInteger Dividend, BigInteger Divisor)
+        //{
+        //    int id = tasks.Count;
+        //    tasks.Add(new DivideTask(Dividend, Divisor, id));
 
-            while (!isDone()) Thread.Sleep(waitTime);
+        //    while (!isDone()) Thread.Sleep(waitTime);
 
-            var res = result();
+        //    var res = result();
 
-            return res;
+        //    return res;
 
-            bool result()
-            {
-                foreach (var task in tasks)
-                {
-                    if (task.ID == id) return task.Result;
-                    else throw new Exception();
-                }
-                throw new Exception();
-            }
-            bool isDone()
-            {
-                foreach (var task in tasks)
-                {
-                    if (task.ID == id) return task.Done;
-                }
-                throw new Exception();
-            }
-        }
+        //    bool result()
+        //    {
+        //        foreach (var task in tasks)
+        //        {
+        //            if (task.ID == id) return task.Result;
+        //            else throw new Exception();
+        //        }
+        //        throw new Exception();
+        //    }
+        //    bool isDone()
+        //    {
+        //        foreach (var task in tasks)
+        //        {
+        //            if (task.ID == id) return task.Done;
+        //        }
+        //        throw new Exception();
+        //    }
+        //}
         
         public DivideTask GetTask(DivisibilityChecker dc)
         {
@@ -126,19 +126,7 @@ namespace Primes.Networking
             return input;
         }
 
-        public void ReturnTaskResult(DivideTaskResult result)
-        {
-            bool TaskMatch(DivideTask divideTask)
-            {
-                return (divideTask.ID == result.ID);
-            }
-            int index = tasks.FindIndex(task => task.ID == result.ID);
-
-            
-            tasks[index].Result = result.Result;
-            tasks[index].Done = true;
-            tasks[index].Processing = false;
-        }
+        
         
 
         public void AddDatabase(string connString, byte[] ipv4, uint id) { devices.Add(new Database(connString, ipv4, id)); }
@@ -211,16 +199,5 @@ namespace Primes.Networking
             Processing = false;
             Done = true;
         }
-    }
-    public class DivideTaskResult
-    {       
-        public int ID;
-        public bool Result;
-
-        public DivideTaskResult(int ID, bool Result)
-        {
-            this.Result = Result;
-            this.ID = ID;
-        }
-    }
+    }    
 }
