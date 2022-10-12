@@ -28,6 +28,7 @@
       "commandName": "Docker",
       "launchBrowser": true,
       "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
+      "DockerfileRunArguments": "--network MusPrimes --ip 26.255.255.254",
       "publishAllPorts": true
     }
   }

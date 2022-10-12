@@ -145,7 +145,7 @@ namespace Primes.Networking
         private void ScanNetwork()
         {
             Console.WriteLine("scanning network");
-            var db = new Database("server = 26.26.26.26; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
+            var db = new Database("server = PrimesDB; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
 
             if (db.Online)
             {
@@ -154,19 +154,33 @@ namespace Primes.Networking
                 Console.WriteLine("DB has been added!");
             }
 
-            Parallel.For(0, 255, i =>
+            for (int i = 0; i < 255; i++)
             {
-                string baseAdress = "http://10.0.1." + i + "/";
+                string baseAdress = "http://26.0.1." + i + ":80/";
                 byte[] ip = { 26, 0, 1, Convert.ToByte(i) };
 
                 if (DivisibilityChecker.DCExists(baseAdress, ip) & !ipInUse(ip))
                 {
                     var newDev = new DivisibilityChecker(baseAdress, ip, (uint)devices.Count);
                     devices.Add(newDev);
-                    newDev.Setup().Wait();
-                    Console.WriteLine("DC{0}, ip:{1}.{2}.{3}.{4}", devices.Count - 1, ip[1], ip[2], ip[3], ip[4]);
+                    //newDev.Setup().Wait();
+                    Console.WriteLine("DC{0}, ip:{1}.{2}.{3}.{4}", devices.Count - 1, ip[0], ip[1], ip[2], ip[3]);
                 }
-            });
+            }
+
+            //Parallel.For(0, 255, i =>
+            //{
+            //    string baseAdress = "http://26.0.1." + i + "/";
+            //    byte[] ip = { 26, 0, 1, Convert.ToByte(i) };
+
+            //    if (DivisibilityChecker.DCExists(baseAdress, ip) & !ipInUse(ip))
+            //    {
+            //        var newDev = new DivisibilityChecker(baseAdress, ip, (uint)devices.Count);
+            //        devices.Add(newDev);
+            //        //newDev.Setup().Wait();
+            //        Console.WriteLine("DC{0}, ip:{1}.{2}.{3}.{4}", devices.Count - 1, ip[0], ip[1], ip[2], ip[3]);
+            //    }
+            //});
             Console.WriteLine("Scan ended");
                                     
         }

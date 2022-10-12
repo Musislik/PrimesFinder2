@@ -59,18 +59,27 @@ namespace Primes.Communication
         {
             get
             {
-                BigInteger lastPrime = 0;
                 try
                 {
                     using (var connection = new MySqlConnection(mySqlConnectionString_PrimesReader))
                     {
-                        connection.Open();
+                        var cmd = new MySqlCommand("select * from sys.LastPrimeValue;", connection);
+                        MySqlDataReader myData;
+                        UInt32 Size;
+                        byte[] rawData;
 
-                        using var Command = connection.CreateCommand();
-                        Command.CommandType = System.Data.CommandType.Text;
-                        Command.CommandText = "select * from sys.LastPrimeValue;";
-                        var dataReader = Command.ExecuteReader();
-                        while (dataReader.Read()) lastPrime = BigInteger.Parse(dataReader.GetString("value"));
+                        connection.Open();
+                        myData = cmd.ExecuteReader();
+
+                        if (!myData.HasRows)
+                            throw new Exception("Chyba pøi ètení prvoèísla z LastPrime");
+
+                        myData.Read();
+                        Size = myData.GetUInt32(myData.GetOrdinal("Size"));
+                        rawData = new byte[Size];
+                        myData.GetBytes(myData.GetOrdinal("Value"), 0, rawData, 0, (int)Size);
+
+                        return new BigInteger(rawData, true);
                     }
                 }
                 catch (MySqlException e)
@@ -78,39 +87,38 @@ namespace Primes.Communication
 
                     System.Console.WriteLine(e.Message);
                 }
-
-                return lastPrime;
+                return 0;
             }
         }
-        public BigInteger SecLastPrime
-        {
-            get
-            {
-                BigInteger secLastPrime = 0;
-                try
-                {
-                    using (var connection = new MySqlConnection(mySqlConnectionString_PrimesReader))
-                    {
-                        connection.Open();
+        //public BigInteger SecLastPrime
+        //{
+        //    get
+        //    {
+        //        BigInteger secLastPrime = 0;
+        //        try
+        //        {
+        //            using (var connection = new MySqlConnection(mySqlConnectionString_PrimesReader))
+        //            {
+        //                connection.Open();
 
-                        using var Command = connection.CreateCommand();
-                        Command.CommandType = System.Data.CommandType.Text;
-                        Command.CommandText = "select * from sys.LastTwoPrimesValue;";
-                        var dataReader = Command.ExecuteReader();
-                        while (dataReader.Read())
-                        {
-                            dataReader.GetString("value");
-                            secLastPrime = BigInteger.Parse(dataReader.GetString("value"));
-                        }
-                    }
-                }
-                catch (MySqlException e)
-                {
-                    System.Console.WriteLine(e.Message);
-                }
-                return secLastPrime;
-            }
-        }
+        //                using var Command = connection.CreateCommand();
+        //                Command.CommandType = System.Data.CommandType.Text;
+        //                Command.CommandText = "select * from sys.LastTwoPrimesValue;";
+        //                var dataReader = Command.ExecuteReader();
+        //                while (dataReader.Read())
+        //                {
+        //                    dataReader.GetString("value");
+        //                    secLastPrime = BigInteger.Parse(dataReader.GetString("value"));
+        //                }
+        //            }
+        //        }
+        //        catch (MySqlException e)
+        //        {
+        //            System.Console.WriteLine(e.Message);
+        //        }
+        //        return secLastPrime;
+        //    }
+        //}
 
         public void InsertCommand(string command)
         {
@@ -122,38 +130,6 @@ namespace Primes.Communication
                 Command.CommandText = command;
                 Command.ExecuteNonQuery();
             }
-        }
-        public BigInteger PrimeReader(int index)
-        {
-            //pryc
-            try
-            {
-                using (var conn = new MySqlConnection(mySqlConnectionString_PrimesReader))
-                {
-                    var cmd = new MySqlCommand("select * from Primes where PrimeID=" + index, conn);
-                    MySqlDataReader myData;
-                    UInt32 Size;
-                    byte[] rawData;
-
-                    conn.Open();
-                    myData = cmd.ExecuteReader();
-
-                    if (!myData.HasRows)
-                        throw new Exception("Chyba pøi ètení prvoèísla");
-
-                    myData.Read();
-                    Size = myData.GetUInt32(myData.GetOrdinal("Size"));
-                    rawData = new byte[Size];
-                    myData.GetBytes(myData.GetOrdinal("Value"), 0, rawData, 0, (int)Size);
-
-                    return new BigInteger(rawData, true);
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-            }
-            return 0;
         }
         public BigInteger PrimeReader(BigInteger index)
         {
@@ -171,7 +147,7 @@ namespace Primes.Communication
                     myData = cmd.ExecuteReader();
 
                     if (!myData.HasRows)
-                        throw new Exception("Chyba pøi ètení prvoèísla");
+                        throw new Exception("Chyba pøi ètení prvoèísla z primesReader");
 
                     myData.Read();
                     Size = myData.GetUInt32(myData.GetOrdinal("Size"));
@@ -200,7 +176,7 @@ namespace Primes.Communication
             myData = cmd.ExecuteReader();
 
             if (!myData.HasRows)
-                throw new Exception("Chyba pøi ètení prvoèísla");
+                throw new Exception("Chyba pøi ètení prvoèísla z listu");
 
 
             try

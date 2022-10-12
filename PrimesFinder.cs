@@ -19,7 +19,7 @@ namespace Primes.PrimesFinder
 
         public bool IsPrime(BigInteger number)
         {
-            int i = 0;
+            int i = 1;
             bool tRes = false;
             List<DivideTask> tasksInProcess = new List<DivideTask>();
             
@@ -43,7 +43,7 @@ namespace Primes.PrimesFinder
                 {
                     for (int j = 0; j < tasksInProcess.Count; j++)
                     {
-                        while (tasksInProcess[j].Processing)
+                        while (!tasksInProcess[j].Done)
                         {
                             Thread.Sleep(100);
                             Console.WriteLine("Waiting...");
