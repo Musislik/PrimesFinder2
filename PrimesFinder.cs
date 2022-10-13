@@ -43,7 +43,7 @@ namespace Primes.PrimesFinder
 
                     tasksInProcess = network.SendTask(tasksInProcess);
 
-                    Thread.Sleep(100);
+                    Thread.Sleep(50);
                 }
 
                 var divisor = sql.PrimeReader(i);

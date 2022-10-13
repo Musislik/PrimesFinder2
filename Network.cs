@@ -17,11 +17,12 @@ namespace Primes.Networking
         public int tasksLimit = 1000;
 
         public bool ipInUse(byte[] ip4)
-        {
-            foreach (var item in devices)
+        {   
+            for (int i = 0; i < devices.Count; i++)
             {
-                if (item.Ipv4 == ip4) return true;
+                if (devices[i].Ipv4 == ip4) return true;
             }
+
             return false;
         }
 
@@ -155,23 +156,9 @@ namespace Primes.Networking
                 Console.WriteLine("DB has been added!");
             }
 
-            for (int i = 0; i < 255; i++)
-            {
-                string baseAdress = "http://26.0.1." + i + ":80/";
-                byte[] ip = { 26, 0, 1, Convert.ToByte(i) };
-
-                if (DivisibilityChecker.DCExists(baseAdress, ip) & !ipInUse(ip))
-                {
-                    var newDev = new DivisibilityChecker(baseAdress, ip, (uint)devices.Count);
-                    devices.Add(newDev);
-                    //newDev.Setup().Wait();
-                    Console.WriteLine("DC{0}, ip:{1}.{2}.{3}.{4}", devices.Count - 1, ip[0], ip[1], ip[2], ip[3]);
-                }
-            }
-
-            //Parallel.For(0, 255, i =>
+            //for (int i = 0; i < 255; i++)
             //{
-            //    string baseAdress = "http://26.0.1." + i + "/";
+            //    string baseAdress = "http://26.0.1." + i + ":80/";
             //    byte[] ip = { 26, 0, 1, Convert.ToByte(i) };
 
             //    if (DivisibilityChecker.DCExists(baseAdress, ip) & !ipInUse(ip))
@@ -181,7 +168,22 @@ namespace Primes.Networking
             //        //newDev.Setup().Wait();
             //        Console.WriteLine("DC{0}, ip:{1}.{2}.{3}.{4}", devices.Count - 1, ip[0], ip[1], ip[2], ip[3]);
             //    }
-            //});
+            //}
+
+            Parallel.For(0, 255, i =>
+            {
+                string baseAdress = "http://26.0.1." + i + ":80/";
+                byte[] ip = { 26, 0, 1, Convert.ToByte(i) };
+
+                    if (DivisibilityChecker.DCExists(baseAdress, ip))       //& IpInUse
+                    {
+                        var newDev = new DivisibilityChecker(baseAdress, ip, (uint)devices.Count);
+                        devices.Add(newDev);
+                        //newDev.Setup().Wait();
+                        Console.WriteLine("DC{0}, ip:{1}.{2}.{3}.{4}", devices.Count - 1, ip[0], ip[1], ip[2], ip[3]);
+                    }
+                
+            });
             Console.WriteLine("Scan ended");
                                     
         }
