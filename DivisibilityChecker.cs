@@ -19,34 +19,28 @@ namespace Primes.Networking
         private const DeviceType devType = DeviceType.DivisibilityChecker;
         public string baseAddress;
         private HttpClient client = new HttpClient();
+        
 
         //Public
 
-        public bool Online
+        public bool Online()
         {
-            get
-            {
-                try
-                {
-                    var dc = GetDCState();
-                    return dc.Result.StatusCode == System.Net.HttpStatusCode.OK;
-                }
-                catch (Exception e)
-                {
-                    return false;
-                }
-                
-            }
-        }
-        public bool IsBusy
-        {
-            get
+            try
             {
                 var dc = GetDCState();
-                if (dc.Result.Content.ReadAsStringAsync().Result == "false") return false;
-                if (dc.Result.Content.ReadAsStringAsync().Result == "true") return true;
-                else throw new Exception("IsBusy error");
+                return dc.Result.StatusCode == System.Net.HttpStatusCode.OK;
             }
+            catch (Exception e)
+            {
+                return false;
+            }
+        }
+        public bool IsBusy()
+        {
+            var dc = GetDCState();
+            if (dc.Result.Content.ReadAsStringAsync().Result == "false") return false;
+            if (dc.Result.Content.ReadAsStringAsync().Result == "true") return true;
+            else throw new Exception("IsBusy error");
         }
         public uint Id { get { return id; } }
         public byte[] Ipv4 { get { return ipv4; } }
@@ -67,13 +61,13 @@ namespace Primes.Networking
         }
 
         //DC metody
-        public async Task<HttpResponseMessage> StartQuery(DUnit res)
+        public async Task<HttpResponseMessage> StartQuery(BigInteger Divisor, BigInteger Dividend, bool isBig)
         {
-            return await client.PostAsJsonAsync("divisibility", res);
+            return await client.PostAsJsonAsync("divisibility", new List<byte[]> { Divisor.ToByteArray(), Dividend.ToByteArray() });
         }
         public async Task<HttpResponseMessage> GetDCState()
         {
-            client.Timeout = TimeSpan.FromMilliseconds(100);
+            //client.Timeout = TimeSpan.FromMilliseconds(100);
             return await client.GetAsync("state");
         }
         public async Task<HttpResponseMessage> Setup()
@@ -83,18 +77,7 @@ namespace Primes.Networking
         public static bool DCExists(string baseAdress, byte[] ip4)
         {
             var dc = new DivisibilityChecker(baseAdress, ip4, 0);
-            return dc.Online;
+            return dc.Online();
         }
     }
-    public class DUnit
-    {
-        public BigInteger Divisor, Dividend;
-        public bool IsBig;
-        public DUnit(BigInteger divisor, BigInteger dividend, bool isBig)
-        {
-            this.IsBig = isBig;
-            this.Dividend = dividend;
-            this.Divisor = divisor;
-        }
-    }    
 }

@@ -17,13 +17,11 @@ namespace Primes.Networking
         private string connString;
         private MySqlCom sql;
 
-        public bool Online 
+        public bool Online() 
         { 
-            get 
-            {
-                sql = new MySqlCom(connString);
-                return sql.State;
-            } 
+           sql = new MySqlCom(connString);
+           return sql.State;
+            
         }
         public uint Id { get { return id; } }
         public byte[] Ipv4 { get { return ipv4; } }

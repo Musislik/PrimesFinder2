@@ -3,24 +3,20 @@ using System.Numerics;
 using Primes.PrimesFinder;
 using Primes.Communication;
 
-/*
-var client = new HttpClient();
-client.BaseAddress = new Uri("http://26.0.1.0/");
-Console.WriteLine(client.GetAsync("state").Result.StatusCode);
-Console.ReadLine();
-*/
+
 
 bool running = false;
-string connStringDB = "Server=10.0.1.26; Port=3306; Database=sys; ";
+string connStringDB = "Server=PrimesDB; Port=3306; Database=sys; ";
 var network = new Network(Environment.GetEnvironmentVariable("Scan") == "True", Convert.ToInt32(Environment.GetEnvironmentVariable("WaitTime")), Convert.ToInt32(Environment.GetEnvironmentVariable("TasksLimit")));
 //var network = new Network(false, 100, 1000);
 
 var sql = new MySqlCom(connStringDB);
 Console.WriteLine("sql state: " + sql.State);
 
-sql.dbReset();
-
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllers().AddJsonOptions((options) => { options.JsonSerializerOptions.PropertyNamingPolicy = null; });
+
 var app = builder.Build();
 
 app.MapGet("/", () => "Hello World!");
@@ -95,9 +91,13 @@ app.Run();
 void Run()
 {
     PrimesFinder pf = new PrimesFinder(new MySqlCom(connStringDB), network);
-    
-    for (BigInteger i = sql.LastPrime + 2; running == true; i += 2)
+
+    var primesToWrite = new List<BigInteger>();
+
+    for (BigInteger i = sql.LastPrime + 2; running | primesToWrite.Count < 100000 ; i += 2)
     {
-        if (pf.IsPrime(i)) sql.PrimesWriter(new List<BigInteger> { i });
+        if (pf.IsPrime(i)) primesToWrite.Add(i);
     }
+
+    sql.PrimesWriter(primesToWrite);
 }

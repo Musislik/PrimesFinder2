@@ -9,7 +9,7 @@ namespace Primes.Networking
 {
     public interface INetworkDevice
     {
-        bool Online { get; }
+        bool Online();
         uint Id { get; }
         byte[] Ipv4 { get; }
         byte[] Ipv6 { get; }

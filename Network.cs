@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+using Primes.Communication;
 
 namespace Primes.Networking
 {
@@ -101,13 +102,15 @@ namespace Primes.Networking
             DivisibilityChecker freeDc(List<INetworkDevice> input)
             {
                 foreach (var device in input)
+                {
                     if (device.DevType == DeviceType.DivisibilityChecker)
                     {
-                        if (!((DivisibilityChecker)device).IsBusy)
+                        if (!((DivisibilityChecker)device).IsBusy())
                         {
                             return (DivisibilityChecker)device;
                         }
                     }
+                }
                 return null;
             }
 
@@ -126,8 +129,6 @@ namespace Primes.Networking
             return input;
         }
 
-        
-        
 
         public void AddDatabase(string connString, byte[] ipv4, uint id) { devices.Add(new Database(connString, ipv4, id)); }
         public void AddDivisibilityChecker(string baseAddress, byte[] ipv4, uint id) { devices.Add(new DivisibilityChecker(baseAddress, ipv4, id)); }
@@ -146,8 +147,8 @@ namespace Primes.Networking
         {
             Console.WriteLine("scanning network");
             var db = new Database("server = PrimesDB; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
-
-            if (db.Online)
+            //var db = new Database("server = 10.0.1.26; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
+            if (db.Online())
             {
 
                 devices.Add(db);
@@ -208,7 +209,7 @@ namespace Primes.Networking
         {
             DcId = dc.Id;
             Processing = true;
-            var result = dc.StartQuery(new DUnit(Divisor, Dividend, true));
+            var result = dc.StartQuery(Divisor, Dividend, true);
             Result = result.Result.Content.ReadAsStringAsync().Result == "true";
             Processing = false;
             Done = true;

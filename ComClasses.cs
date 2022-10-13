@@ -2,16 +2,24 @@
 
 namespace Primes.Communication
 {
-    class DUnit
+    public class DUnit
     {
-        public BigInteger Divisor, Dividend;
+        public byte[] Divisor, Dividend;
         public bool IsBig;
-        DUnit(BigInteger divisor, BigInteger dividend, bool isBig)
+        public DUnit(byte[] divisor, byte[] dividend, bool isBig)
         {
             this.IsBig = isBig;
             this.Dividend = dividend;
             this.Divisor = divisor;
         }
+        //public BigInteger GetDivisor()
+        //{
+        //    return new BigInteger(Divisor);
+        //}
+        //public BigInteger GetDividend()
+        //{
+        //    return new BigInteger(Dividend);
+        //}
     }
 
     internal class DcConfiguration

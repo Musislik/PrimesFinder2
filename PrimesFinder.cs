@@ -1,6 +1,7 @@
 ﻿using Primes.Networking;
 using Primes.Communication;
 using System.Numerics;
+using Primes.Divisibility;
 
 namespace Primes.PrimesFinder
 {
@@ -19,7 +20,11 @@ namespace Primes.PrimesFinder
 
         public bool IsPrime(BigInteger number)
         {
-            int i = 1;
+
+            if (BasicDivisibility.DivisibleByBasic(number)) return false;
+
+            Console.WriteLine("IsPrime: " + number);
+            int i = 4;  //[1] = 2
             bool tRes = false;
             List<DivideTask> tasksInProcess = new List<DivideTask>();
             
@@ -29,8 +34,12 @@ namespace Primes.PrimesFinder
                 while (tasksInProcess.Count >= network.tasksLimit)
                 {
                     Console.WriteLine("waiting... Max tasks");
-                    tasksCheck();
-                    if (tRes) return false;
+                    tasksCheckAndDelete();
+                    if (tRes)
+                    {
+                        i = 2;
+                        return false;
+                    }
 
                     tasksInProcess = network.SendTask(tasksInProcess);
 
@@ -38,7 +47,7 @@ namespace Primes.PrimesFinder
                 }
 
                 var divisor = sql.PrimeReader(i);
-                if (BigInteger.Multiply(divisor, divisor) < number) i++;
+                if (BigInteger.Multiply(divisor, divisor) <= number) i++;
                 else
                 {
                     for (int j = 0; j < tasksInProcess.Count; j++)
@@ -52,7 +61,12 @@ namespace Primes.PrimesFinder
                     
                     tasksCheck();
 
-                    if (tRes) return false;
+                    if (tRes)
+                    {
+                        i = 2;
+                        return false;
+                    }
+                    i = 2;
                     return true;
                 }
                 
@@ -66,9 +80,19 @@ namespace Primes.PrimesFinder
                         if (task.Done)
                         {
                             if (task.Result) tRes = true;
-                            else tasksInProcess.Remove(task);
                         }
                     });                    
+                }
+                void tasksCheckAndDelete()
+                {
+                    Parallel.ForEach(tasksInProcess, task =>
+                    {
+                        if (task.Done)
+                        {
+                            if (task.Result) tRes = true;
+                            else tasksInProcess.Remove(task);
+                        }
+                    });
                 }
 
 
