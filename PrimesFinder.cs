@@ -37,7 +37,6 @@ namespace Primes.PrimesFinder
                     tasksCheckAndDelete();
                     if (tRes)
                     {
-                        i = 2;
                         return false;
                     }
 
@@ -63,10 +62,8 @@ namespace Primes.PrimesFinder
 
                     if (tRes)
                     {
-                        i = 2;
                         return false;
                     }
-                    i = 2;
                     return true;
                 }
                 

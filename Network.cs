@@ -10,7 +10,7 @@ namespace Primes.Networking
 {
     public class Network
     {
-        
+        private int selectedDc = 0;
         public List<INetworkDevice> devices;
         public List<DivideTask> tasks;
         public int waitTime = 100;
@@ -90,7 +90,6 @@ namespace Primes.Networking
 
         public List<DivideTask> SendTask (List<DivideTask> input)
         {
-
             DivideTask freeDivideTask(List<DivideTask> input)
             {
                 foreach (var task in input)
@@ -102,16 +101,26 @@ namespace Primes.Networking
 
             DivisibilityChecker freeDc(List<INetworkDevice> input)
             {
-                foreach (var device in input)
+                if (selectedDc >= input.Count) selectedDc = 0;
+                
+                for (; selectedDc < input.Count; selectedDc++)
                 {
-                    if (device.DevType == DeviceType.DivisibilityChecker)
+                    if(input[selectedDc].DevType == DeviceType.DivisibilityChecker)
                     {
-                        if (!((DivisibilityChecker)device).IsBusy())
-                        {
-                            return (DivisibilityChecker)device;
-                        }
+                        if (!((DivisibilityChecker)input[selectedDc]).IsBusy()) return (DivisibilityChecker)input[selectedDc];
                     }
                 }
+
+                //foreach (var device in input)
+                //{
+                //    if (device.DevType == DeviceType.DivisibilityChecker)
+                //    {
+                //        if (!((DivisibilityChecker)device).IsBusy())
+                //        {
+                //            return (DivisibilityChecker)device;
+                //        }
+                //    }
+                //}
                 return null;
             }
 
@@ -147,11 +156,12 @@ namespace Primes.Networking
         private void ScanNetwork()
         {
             Console.WriteLine("scanning network");
-            var db = new Database("server = PrimesDB; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
+            //var db = new Database("server = PrimesDB; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
             //var db = new Database("server = 10.0.1.26; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
+            var db = new Database("server = 88.101.172.29; port = 2606; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
+
             if (db.Online())
             {
-
                 devices.Add(db);
                 Console.WriteLine("DB has been added!");
             }

@@ -6,9 +6,9 @@ using Primes.Communication;
 
 
 bool running = false;
-string connStringDB = "Server=PrimesDB; Port=3306; Database=sys; ";
-var network = new Network(Environment.GetEnvironmentVariable("Scan") == "True", Convert.ToInt32(Environment.GetEnvironmentVariable("WaitTime")), Convert.ToInt32(Environment.GetEnvironmentVariable("TasksLimit")));
-//var network = new Network(false, 100, 1000);
+string connStringDB = "Server=88.101.172.29; Port=3306; Database=sys; ";
+//var network = new Network(Environment.GetEnvironmentVariable("Scan") == "True", Convert.ToInt32(Environment.GetEnvironmentVariable("WaitTime")), Convert.ToInt32(Environment.GetEnvironmentVariable("TasksLimit")));
+var network = new Network(true, 100, 1000);
 
 var sql = new MySqlCom(connStringDB);
 Console.WriteLine("sql state: " + sql.State);
@@ -94,7 +94,7 @@ void Run()
 
     var primesToWrite = new List<BigInteger>();
 
-    for (BigInteger i = sql.LastPrime + 2; running | primesToWrite.Count < 100000 ; i += 2)
+    for (BigInteger i = sql.LastPrime + 2; running; i += 2)
     {
         if (pf.IsPrime(i)) primesToWrite.Add(i);
     }
