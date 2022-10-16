@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
@@ -15,6 +16,8 @@ namespace Primes.Networking
         public List<DivideTask> tasks;
         public int waitTime = 100;
         public int tasksLimit = 1000;
+        
+
 
         public bool ipInUse(byte[] ip4)
         {   
@@ -39,37 +42,7 @@ namespace Primes.Networking
             {
                 if (device.DevType == DeviceType.DivisibilityChecker) yield return device;
             }
-        }
-        //public async Task<bool> IsDivisible(BigInteger Dividend, BigInteger Divisor)
-        //{
-        //    int id = tasks.Count;
-        //    tasks.Add(new DivideTask(Dividend, Divisor, id));
-
-        //    while (!isDone()) Thread.Sleep(waitTime);
-
-        //    var res = result();
-
-        //    return res;
-
-        //    bool result()
-        //    {
-        //        foreach (var task in tasks)
-        //        {
-        //            if (task.ID == id) return task.Result;
-        //            else throw new Exception();
-        //        }
-        //        throw new Exception();
-        //    }
-        //    bool isDone()
-        //    {
-        //        foreach (var task in tasks)
-        //        {
-        //            if (task.ID == id) return task.Done;
-        //        }
-        //        throw new Exception();
-        //    }
-        //}
-        
+        }        
         public DivideTask GetTask(DivisibilityChecker dc)
         {
             while (true)
@@ -111,6 +84,7 @@ namespace Primes.Networking
                     }
                 }
 
+
                 //foreach (var device in input)
                 //{
                 //    if (device.DevType == DeviceType.DivisibilityChecker)
@@ -135,10 +109,8 @@ namespace Primes.Networking
                 }
                 else break;
             }
-
             return input;
         }
-
 
         public void AddDatabase(string connString, byte[] ipv4, uint id) { devices.Add(new Database(connString, ipv4, id)); }
         public void AddDivisibilityChecker(string baseAddress, byte[] ipv4, uint id) { devices.Add(new DivisibilityChecker(baseAddress, ipv4, id)); }
@@ -156,9 +128,9 @@ namespace Primes.Networking
         private void ScanNetwork()
         {
             Console.WriteLine("scanning network");
-            //var db = new Database("server = PrimesDB; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
+            var db = new Database("server = PrimesDB; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
             //var db = new Database("server = 10.0.1.26; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
-            var db = new Database("server = 88.101.172.29; port = 2606; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
+            //var db = new Database("server = 88.101.172.29; port = 2606; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
 
             if (db.Online())
             {
@@ -179,6 +151,7 @@ namespace Primes.Networking
             //        Console.WriteLine("DC{0}, ip:{1}.{2}.{3}.{4}", devices.Count - 1, ip[0], ip[1], ip[2], ip[3]);
             //    }
             //}
+
 
             Parallel.For(0, 255, i =>
             {

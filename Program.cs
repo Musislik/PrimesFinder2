@@ -2,13 +2,19 @@ using Primes.Networking;
 using System.Numerics;
 using Primes.PrimesFinder;
 using Primes.Communication;
-
-
+using System.Net.Http.Headers;
 
 bool running = false;
-string connStringDB = "Server=88.101.172.29; Port=3306; Database=sys; ";
-//var network = new Network(Environment.GetEnvironmentVariable("Scan") == "True", Convert.ToInt32(Environment.GetEnvironmentVariable("WaitTime")), Convert.ToInt32(Environment.GetEnvironmentVariable("TasksLimit")));
-var network = new Network(true, 100, 1000);
+//string connStringDB = "Server=88.101.172.29; Port=2606; Database=sys; ";
+string connStringDB = "Server=PrimesDB; Port=3306; Database=sys; ";
+
+var network = new Network(Environment.GetEnvironmentVariable("Scan") == "True", Convert.ToInt32(Environment.GetEnvironmentVariable("WaitTime")), Convert.ToInt32(Environment.GetEnvironmentVariable("TasksLimit")));
+//var network = new Network(true, 100, 1000);
+
+HttpClient broadCast = new HttpClient();
+broadCast.BaseAddress = new Uri("http://26.255.255.255:255/");
+broadCast.DefaultRequestHeaders.Clear();
+broadCast.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
 var sql = new MySqlCom(connStringDB);
 Console.WriteLine("sql state: " + sql.State);
@@ -25,6 +31,7 @@ app.MapGet("/start", () =>
 {
     if (!running)
     {
+        broadCast.PostAsJsonAsync("WhoIsThere", "http://26.255.255.254/");
         running = true;
         Task.Run(() => Run());
     }
@@ -33,7 +40,10 @@ app.MapGet("/stop", () =>
 {
     running = false;
 });
-
+app.MapPost("/AddDC", (DcConfiguration conf) =>
+{
+    network.AddDivisibilityChecker(conf.baseAdress, conf.ip4, (uint)network.devices.Count);
+});
 
 app.MapGet("/mysql/reset", () =>
 {
@@ -61,7 +71,6 @@ app.MapGet("/mysql/setup", () =>
     }
     return 200;
 });
-
 app.MapGet("/mysql/get/state", () =>
 {
     Console.WriteLine("Sql state: " + sql.State);
