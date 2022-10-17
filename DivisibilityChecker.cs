@@ -17,9 +17,10 @@ namespace Primes.Networking
         private uint id;
         private byte[] ipv4, ipv6;
         private const DeviceType devType = DeviceType.DivisibilityChecker;
+        private bool isBusy = false;
         public string baseAddress;
         private HttpClient client = new HttpClient();
-        
+
 
         //Public
 
@@ -35,13 +36,7 @@ namespace Primes.Networking
                 return false;
             }
         }
-        public bool IsBusy()
-        {
-            var dc = GetDCState();
-            if (dc.Result.Content.ReadAsStringAsync().Result == "false") return false;
-            if (dc.Result.Content.ReadAsStringAsync().Result == "true") return true;
-            else throw new Exception("IsBusy error");
-        }
+        public bool IsBusy { get { return isBusy; } set { isBusy = value; } }
         public uint Id { get { return id; } }
         public byte[] Ipv4 { get { return ipv4; } }
         public byte[] Ipv6 { get { return ipv6; } }

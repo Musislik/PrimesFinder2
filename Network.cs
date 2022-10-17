@@ -74,15 +74,29 @@ namespace Primes.Networking
 
             DivisibilityChecker freeDc(List<INetworkDevice> input)
             {
-                if (selectedDc >= input.Count) selectedDc = 0;
-                
-                for (; selectedDc < input.Count; selectedDc++)
+                //if (selectedDc >= input.Count) selectedDc = 0;
+
+                //for (; selectedDc < input.Count; selectedDc++)
+                //{
+                //    if(input[selectedDc].DevType == DeviceType.DivisibilityChecker)
+                //    {
+                //        if (!((DivisibilityChecker)input[selectedDc]).IsBusy) return (DivisibilityChecker)input[selectedDc];
+                //    }
+                //}
+
+
+                DivisibilityChecker output = null;
+                Parallel.ForEach(input, (device, state) =>
                 {
-                    if(input[selectedDc].DevType == DeviceType.DivisibilityChecker)
+                    if (device.DevType == DeviceType.DivisibilityChecker)
                     {
-                        if (!((DivisibilityChecker)input[selectedDc]).IsBusy()) return (DivisibilityChecker)input[selectedDc];
+                        if (!((DivisibilityChecker)device).IsBusy)
+                        {
+                            output = (DivisibilityChecker)device;
+                            state.Break();
+                        }
                     }
-                }
+                });
 
 
                 //foreach (var device in input)
@@ -95,7 +109,7 @@ namespace Primes.Networking
                 //        }
                 //    }
                 //}
-                return null;
+                return output;
             }
 
             while (true)
@@ -128,8 +142,8 @@ namespace Primes.Networking
         private void ScanNetwork()
         {
             Console.WriteLine("scanning network");
-            var db = new Database("server = PrimesDB; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
-            //var db = new Database("server = 10.0.1.26; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
+            //var db = new Database("server = PrimesDB; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
+            var db = new Database("server = 10.0.1.26; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
             //var db = new Database("server = 88.101.172.29; port = 2606; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
 
             if (db.Online())
@@ -153,20 +167,35 @@ namespace Primes.Networking
             //}
 
 
-            Parallel.For(0, 255, i =>
-            {
-                string baseAdress = "http://26.0.1." + i + ":80/";
-                byte[] ip = { 26, 0, 1, Convert.ToByte(i) };
+            //Parallel.For(0, 255, i =>
+            //{
+            //    string baseAdress = "http://26.0.1." + i + ":80/";
+            //    byte[] ip = { 26, 0, 1, Convert.ToByte(i) };
 
-                    if (DivisibilityChecker.DCExists(baseAdress, ip))       //& IpInUse
-                    {
-                        var newDev = new DivisibilityChecker(baseAdress, ip, (uint)devices.Count);
-                        devices.Add(newDev);
-                        //newDev.Setup().Wait();
-                        Console.WriteLine("DC{0}, ip:{1}.{2}.{3}.{4}", devices.Count - 1, ip[0], ip[1], ip[2], ip[3]);
-                    }
-                
-            });
+            //        if (DivisibilityChecker.DCExists(baseAdress, ip))       //& IpInUse
+            //        {
+            //            var newDev = new DivisibilityChecker(baseAdress, ip, (uint)devices.Count);
+            //            devices.Add(newDev);
+            //            //newDev.Setup().Wait();
+            //            Console.WriteLine("DC{0}, ip:{1}.{2}.{3}.{4}", devices.Count - 1, ip[0], ip[1], ip[2], ip[3]);
+            //        }
+
+            //});
+            int i = 0;
+            while (true)
+            {                
+                string baseAdress = "http://26.0.1." + i + ":80/";
+                byte[] ip = { 26, 0, 1, Convert.ToByte(i++) };
+
+                if (DivisibilityChecker.DCExists(baseAdress, ip))       //& IpInUse
+                {
+                    var newDev = new DivisibilityChecker(baseAdress, ip, (uint)devices.Count);
+                    devices.Add(newDev);
+                    //newDev.Setup().Wait();
+                    Console.WriteLine("DC{0}, ip:{1}.{2}.{3}.{4}", devices.Count - 1, ip[0], ip[1], ip[2], ip[3]);
+                }
+                else break;
+            }
             Console.WriteLine("Scan ended");
                                     
         }
@@ -192,12 +221,14 @@ namespace Primes.Networking
         }
         public void SendTask(DivisibilityChecker dc)
         {
+            dc.IsBusy = true;
             DcId = dc.Id;
             Processing = true;
             var result = dc.StartQuery(Divisor, Dividend, true);
             Result = result.Result.Content.ReadAsStringAsync().Result == "true";
             Processing = false;
             Done = true;
+            dc.IsBusy = false;
         }
     }    
 }
