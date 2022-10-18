@@ -13,7 +13,7 @@ namespace Primes.Networking
     {
         private int selectedDc = 0;
         public List<INetworkDevice> devices;
-        public List<DivideTask> tasks;
+        //public List<DivideTask> tasks;
         public int waitTime = 100;
         public int tasksLimit = 1000;
         
@@ -43,23 +43,7 @@ namespace Primes.Networking
                 if (device.DevType == DeviceType.DivisibilityChecker) yield return device;
             }
         }        
-        public DivideTask GetTask(DivisibilityChecker dc)
-        {
-            while (true)
-            {
-                for (int i = 0; i < tasks.Count; i++)
-                {
-                    if (!tasks[i].Processing & !tasks[i].Done)
-                    {
-                        tasks[i].Processing = true;
-                        tasks[i].DcId = dc.Id;
-                        return tasks[i];
-                    }
-                }
-                Console.WriteLine("{0}.{1}.{2}.{3} Čeká na task!", dc.Ipv4[0],dc.Ipv4[1],dc.Ipv4[2],dc.Ipv4[3]);
-                Thread.Sleep(waitTime);
-            }
-        }
+        
 
         public List<DivideTask> SendTask (List<DivideTask> input)
         {
@@ -135,15 +119,15 @@ namespace Primes.Networking
             this.waitTime = waitTime;
 
             devices = new List<INetworkDevice>();
-            tasks = new List<DivideTask>();
+            //tasks = new List<DivideTask>();
 
             if (scan) ScanNetwork();            
         }
         private void ScanNetwork()
         {
             Console.WriteLine("scanning network");
-            //var db = new Database("server = PrimesDB; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
-            var db = new Database("server = 10.0.1.26; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
+            var db = new Database("server = PrimesDB; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
+            //var db = new Database("server = 10.0.1.26; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
             //var db = new Database("server = 88.101.172.29; port = 2606; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
 
             if (db.Online())

@@ -7,11 +7,11 @@ using System.Diagnostics;
 
 bool running = false;
 //string connStringDB = "Server=88.101.172.29; Port=2606; Database=sys; ";
-//string connStringDB = "Server=PrimesDB; Port=3306; Database=sys; ";
-string connStringDB = "Server=10.0.1.26; Port=3306; Database=sys; ";
+string connStringDB = "Server=PrimesDB; Port=3306; Database=sys; ";
+//string connStringDB = "Server=10.0.1.26; Port=3306; Database=sys; ";
 
-//var network = new Network(Environment.GetEnvironmentVariable("Scan") == "True", Convert.ToInt32(Environment.GetEnvironmentVariable("WaitTime")), Convert.ToInt32(Environment.GetEnvironmentVariable("TasksLimit")));
-var network = new Network(true, 100, 1000000000);
+var network = new Network(Environment.GetEnvironmentVariable("Scan") == "True", Convert.ToInt32(Environment.GetEnvironmentVariable("WaitTime")), Convert.ToInt32(Environment.GetEnvironmentVariable("TasksLimit")));
+//var network = new Network(true, 100, 1000000000);
 
 //HttpClient broadCast = new HttpClient();
 //broadCast.BaseAddress = new Uri("http://255.255.255.255:255/");
@@ -20,7 +20,7 @@ var network = new Network(true, 100, 1000000000);
 
 var sql = new MySqlCom(connStringDB);
 Console.WriteLine("sql state: " + sql.State);
-int parallelCount = 10;
+int parallelCount = 1000;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -104,28 +104,38 @@ void Run()
         var primesToWrite = new List<BigInteger>();
         var sw = new Stopwatch();
         BigInteger numberToCheck = sql.LastPrime + 2;
-        sw.Start();
-        Parallel.For(0, parallelCount, (parallelIndex) =>
+        List<BigInteger> primes = sql.PrimesReader();
+        foreach (var prime in primes)
         {
-            BigInteger value = numberToCheck + 2 * parallelIndex;
-            if(pf.IsPrime(value)) primesToWrite.Add(value);
-        });
-        sw.Stop();
-        Console.WriteLine("Zkontrolování {0} èísel trvalo {1}ms", parallelCount, sw.ElapsedMilliseconds);
+            Console.WriteLine(prime);
+        }
 
-        //for (; running; i += 2)
+        //sw.Start();
+        //Parallel.For(0, parallelCount, (parallelIndex) =>
         //{
-        //    sw.Start();
-        //    if (pf.IsPrime(i)) primesToWrite.Add(i);
-        //    sw.Stop();
-        //    Console.WriteLine("It tooks: " + sw.ElapsedMilliseconds + "ms");
-        //    sw.Reset();
-        //    if (primesToWrite.Count > 50000)
-        //    {
-        //        sql.PrimesWriter(primesToWrite);
-        //        primesToWrite.Clear();
-        //    }
-        //}    
+        //    BigInteger value = numberToCheck + 2 * parallelIndex;
+        //    if(pf.IsPrime(value)) primesToWrite.Add(value);
+        //});
+        //sw.Stop();
+        //Console.WriteLine("Zkontrolování {0} èísel trvalo {1}ms", parallelCount, sw.ElapsedMilliseconds);
+
+        for (; running; numberToCheck += 2)
+        {
+            sw.Start();
+            if (pf.IsPrime(numberToCheck, primes)) primesToWrite.Add(numberToCheck);
+            sw.Stop();
+            Console.WriteLine("It tooks: " + sw.ElapsedMilliseconds + "ms");
+            sw.Reset();
+            if (primesToWrite.Count > 1000)
+            {
+                
+                sw.Start();
+                sql.PrimesWriter(primesToWrite);
+                sw.Stop();
+                Console.WriteLine("writing tooks: {0}ms", sw.ElapsedMilliseconds);
+                primesToWrite.Clear();
+            }
+        }
         sql.PrimesWriter(primesToWrite);
     } while (running);
 }

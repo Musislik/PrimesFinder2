@@ -2,6 +2,7 @@
 using Primes.Communication;
 using System.Numerics;
 using Primes.Divisibility;
+using System.Diagnostics;
 
 namespace Primes.PrimesFinder
 {
@@ -21,11 +22,11 @@ namespace Primes.PrimesFinder
             this.primes = sql.PrimesReader();
         }
 
-        public bool IsPrime(BigInteger number)
+        public bool IsPrime2(BigInteger number)
         {          
             Console.WriteLine("IsPrime: " + number);
             int i = 4;  //[1] = 2
-            bool tRes = false;
+            bool isDivisible = false;
             List<DivideTask> tasksInProcess = new List<DivideTask>();
             BigInteger divisor = sql.PrimeReader(i);
 
@@ -36,7 +37,7 @@ namespace Primes.PrimesFinder
                 {
                     Console.WriteLine("waiting... Max tasks");
                     tasksCheckAndDelete();
-                    if (tRes)
+                    if (isDivisible)
                     {
                         return false;
                     }
@@ -50,20 +51,13 @@ namespace Primes.PrimesFinder
                 if (BigInteger.Multiply(divisor, divisor) <= number) divisor = primes[i++];
                 else
                 {
-                    for (int j = 0; j < tasksInProcess.Count; j++)
-                    {
-                        while (!tasksInProcess[j].Done)
-                        {
-                            
-                        }
-                    }
                     while (mustWait())
                     {
                         Console.WriteLine("Waiting...");
                         Thread.Sleep(100);
-                        tasksCheckAndDelete();
+                        tasksCheckAndDelete();                        
                     }
-                    //tady nekde
+                    if (isDivisible) return false;
                     primes.Add(number);
                     return true;
                 }
@@ -75,29 +69,101 @@ namespace Primes.PrimesFinder
                 bool mustWait()
                 {
                     bool output = false;
-                    Parallel.ForEach(tasksInProcess, task =>
+                    Parallel.ForEach(tasksInProcess, (task,state)  =>
                     {
                         if (task.Dividend == number) output = true;
+                        state.Break();
                     });
                     return output;
                 }
                 bool tasksCheckAndDelete()
                 {
-                    bool tRes = false;
-                    Parallel.ForEach(tasksInProcess, task =>
+                    while (tasksInProcess.Count >= network.tasksLimit)
                     {
-                        if (task.Done)
+                        Console.WriteLine("waiting");
+                        Parallel.ForEach(tasksInProcess, (task) =>
                         {
-                            if (task.Result) tRes = true;
-                            tasksInProcess.Remove(task);
-                        }                        
-                    });
-                    return tRes;
+                            if (task.Done)
+                            {
+                                if (task.Result) isDivisible = true;
+                            }
+                        });
+                    }
+                    tasksInProcess.Clear();
+                    return isDivisible;
                 }
 
 
             }
             while(true);
+        }
+        public bool IsPrime(BigInteger number, List<BigInteger> primes)
+        {
+            var sw = new Stopwatch();
+            sw.Start();
+            Console.WriteLine("IsPrime: " + number);
+            int primeIndex = 3;  //[1] = 2
+            bool isDivisible = false;
+            List<DivideTask> tasksInProcess = new List<DivideTask>();
+            if (number < 32)
+            {
+                if (BasicDivisibility.DivisibleByBasic(number)) return false;
+            }
+            
+            while (true)
+            {
+                BigInteger divisor = primes[primeIndex++];
+                while (tasksInProcess.Count >= network.tasksLimit)
+                {                    
+                    Console.WriteLine("waiting... Max tasks");
+                    Thread.Sleep(100);
+                    //task check
+
+                    List<int> tasksToDelteIndex = new List<int>();
+
+                    do
+                    {
+                        Parallel.For(0, tasksInProcess.Count, (index) =>
+                        {
+                            if (tasksInProcess[index].Done & tasksInProcess[index].Result)
+                            {
+                                isDivisible = true;
+                                tasksToDelteIndex.Add(index);
+                            }
+                        });
+                        if(tasksToDelteIndex.Count == 0) Thread.Sleep(10);
+                    } while (tasksInProcess.Count == 0);
+
+                    for (int i = 0; i < tasksToDelteIndex.Count; i++)
+                    {
+                        tasksInProcess.RemoveAt(tasksToDelteIndex[i] - i);
+                    }
+                }
+                var numnum = BigInteger.Pow(divisor, 2);
+                if (numnum <= number)
+                {
+                    if (numnum == number) return false;
+                    tasksInProcess.Add(new DivideTask(number, divisor, 0));
+                }
+                else
+                {
+                    sw.Stop();
+                    Console.WriteLine("all sended in {0}ms", sw.ElapsedMilliseconds);
+                    sw.Reset();
+                    bool output = true;
+                    //task check
+                    Parallel.ForEach(tasksInProcess, (task) =>
+                    {
+                        while (!task.Done) { };
+
+                        if (task.Result) output = false;
+                    });
+                    return output;
+                    //return
+                }
+
+                tasksInProcess = network.SendTask(tasksInProcess);
+            }
         }
 
     }
