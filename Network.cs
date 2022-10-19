@@ -125,7 +125,7 @@ namespace Primes.Networking
 
             if (scan) ScanNetwork();            
         }
-        private void ScanNetwork()
+        public void ScanNetwork()
         {
             Console.WriteLine("scanning network");
             var db = new Database("server = PrimesDB; port = 3306; database = sys; ", new byte[] { 26, 26, 26, 26 }, (uint)devices.Count);
@@ -167,6 +167,7 @@ namespace Primes.Networking
             //        }
 
             //});
+
             int i = 0;
             while (true)
             {                

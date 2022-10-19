@@ -17,7 +17,7 @@ namespace Primes.Divisibility
         public static bool DivisibleByTwo(BigInteger input)
         {
             //dělitelnost two
-            return ((input.ToString()[input.ToString().Length - 1] - 48) % 2 == 0) ? true : false;
+            return input.IsEven;
         }
         public static bool DivisibleByThree(BigInteger input)
         {
@@ -26,21 +26,19 @@ namespace Primes.Divisibility
             {
                 input = DigitSum(input);
             }
-            return (input % 3 == 0) ? true : false;
+            return (input % 3 == 0);
         }
         public static bool DivisibleByFive(BigInteger input)
         {
             //dělitelnost pěti
-            return (((input.ToString()[input.ToString().Length - 1] - 48) == 0) || ((input.ToString()[input.ToString().Length - 1] - 48) == 5)) ? true : false;
+            return ((input % 10 == 0) || (input % 10 == 5));
         }
         public static bool DivisibleByNine(BigInteger input)
         {
             //dělitelnost devíti
-            while (input.ToString().Length > 1)
-            {
-                input = DigitSum(input);
-            }
-            return (input % 9 == 0) ? true : false;
+            while (input.ToString().Length > 1) input = DigitSum(input);
+
+            return (input % 9 == 0);
         }
         public static bool DivisibleByBasic(BigInteger input)
         {

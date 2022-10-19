@@ -219,6 +219,7 @@ namespace Primes.Communication
         }
         public void PrimesWriter(List<BigInteger> values)
         {
+            
             foreach (BigInteger value in values)
             {
                 var data = value.ToByteArray(true);
@@ -233,6 +234,31 @@ namespace Primes.Communication
                     }
                 }
             };
+        }
+        public void PrimesWriterAtOnce(List<BigInteger> values)
+        {
+            Console.WriteLine("Writing");
+            string command = "";
+            for (int i = 0; i < values.Count; i++)
+            {
+                command += "INSERT INTO sys.Primes SET Value = @image" + (i*2 + 1) + ", Size = @image" + (i * 2 + 2) + ";";
+            }
+            
+            using (var con = new MySqlConnection(mySqlConnectionString_PrimesWriter))
+            {
+                using (var cmd = new MySqlCommand(command, con))
+                {
+                    con.Open();
+                    for (int i = 0; i < values.Count; i++)
+                    {
+                        var data = values[i].ToByteArray(true);
+
+                        cmd.Parameters.Add(("@image" + (i * 2 + 1)), MySqlDbType.LongBlob).Value = data;
+                        cmd.Parameters.Add(("@image" + (i * 2 + 2)), MySqlDbType.UInt32).Value = data.Length;
+                    };
+                    cmd.ExecuteNonQuery();
+                }
+            }
         }
         public void ParallelPrimesWriter(List<BigInteger> values)
         {

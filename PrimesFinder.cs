@@ -97,17 +97,14 @@ namespace Primes.PrimesFinder
             }
             while(true);
         }
-        public bool IsPrime(BigInteger number, List<BigInteger> primes)
+        public async Task<bool> IsPrime(BigInteger number, List<BigInteger> primes)
         {
             var sw = new Stopwatch();
             Console.WriteLine("IsPrime: " + number);
             int primeIndex = 3;  //[1] = 2
             bool isDivisible = false;
             List<DivideTask> tasksInProcess = new List<DivideTask>();
-            if (number < 32)
-            {
-                if (BasicDivisibility.DivisibleByBasic(number)) return false;
-            }
+            if (BasicDivisibility.DivisibleByBasic(number)) return false;
             try
             {
                 while (true)
