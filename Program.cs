@@ -121,19 +121,29 @@ void Run()
 
         for (; running; numberToCheck += 2)
         {
-            sw.Start();
-            if (pf.IsPrime(numberToCheck, primes)) primesToWrite.Add(numberToCheck);
-            sw.Stop();
-            Console.WriteLine("It tooks: " + sw.ElapsedMilliseconds + "ms");
-            sw.Reset();
-            if (primesToWrite.Count > 1000)
+            try
             {
-                
+                if (pf.IsPrime(numberToCheck, primes)) primesToWrite.Add(numberToCheck);
+            }
+            catch (IndexOutOfRangeException e)
+            {
+                Console.WriteLine("index out of range");
+                sql.PrimesWriter(primesToWrite);
+                primesToWrite.Clear();
+                primes = sql.PrimesReader();
+            }            
+            if (sendPrimes())
+            {                
                 sw.Start();
                 sql.PrimesWriter(primesToWrite);
                 sw.Stop();
                 Console.WriteLine("writing tooks: {0}ms", sw.ElapsedMilliseconds);
                 primesToWrite.Clear();
+                primes = sql.PrimesReader();
+            }
+            bool sendPrimes()
+            {
+                return (primesToWrite.Count > 1000 | primes.Count < 10 | BigInteger.Pow(primes[primes.Count - 1], 2) <= numberToCheck);
             }
         }
         sql.PrimesWriter(primesToWrite);

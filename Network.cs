@@ -6,6 +6,7 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using Primes.Communication;
+using System.Diagnostics;
 
 namespace Primes.Networking
 {
@@ -47,6 +48,7 @@ namespace Primes.Networking
 
         public List<DivideTask> SendTask (List<DivideTask> input)
         {
+
             DivideTask freeDivideTask(List<DivideTask> input)
             {
                 foreach (var task in input)

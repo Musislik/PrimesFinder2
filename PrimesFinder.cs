@@ -100,7 +100,6 @@ namespace Primes.PrimesFinder
         public bool IsPrime(BigInteger number, List<BigInteger> primes)
         {
             var sw = new Stopwatch();
-            sw.Start();
             Console.WriteLine("IsPrime: " + number);
             int primeIndex = 3;  //[1] = 2
             bool isDivisible = false;
@@ -109,60 +108,63 @@ namespace Primes.PrimesFinder
             {
                 if (BasicDivisibility.DivisibleByBasic(number)) return false;
             }
-            
-            while (true)
+            try
             {
-                BigInteger divisor = primes[primeIndex++];
-                while (tasksInProcess.Count >= network.tasksLimit)
-                {                    
-                    Console.WriteLine("waiting... Max tasks");
-                    Thread.Sleep(100);
-                    //task check
-
-                    List<int> tasksToDelteIndex = new List<int>();
-
-                    do
+                while (true)
+                {
+                    BigInteger divisor = primes[primeIndex++];
+                    while (tasksInProcess.Count >= network.tasksLimit)
                     {
-                        Parallel.For(0, tasksInProcess.Count, (index) =>
+                        Console.WriteLine("waiting... Max tasks");
+                        Thread.Sleep(100);
+                        //task check
+
+                        List<int> tasksToDelteIndex = new List<int>();
+
+                        do
                         {
-                            if (tasksInProcess[index].Done & tasksInProcess[index].Result)
+                            Parallel.For(0, tasksInProcess.Count, (index) =>
                             {
-                                isDivisible = true;
-                                tasksToDelteIndex.Add(index);
-                            }
-                        });
-                        if(tasksToDelteIndex.Count == 0) Thread.Sleep(10);
-                    } while (tasksInProcess.Count == 0);
+                                if (tasksInProcess[index].Done & tasksInProcess[index].Result)
+                                {
+                                    isDivisible = true;
+                                    tasksToDelteIndex.Add(index);
+                                }
+                            });
+                            if (tasksToDelteIndex.Count == 0) Thread.Sleep(10);
+                        } while (tasksInProcess.Count == 0);
 
-                    for (int i = 0; i < tasksToDelteIndex.Count; i++)
-                    {
-                        tasksInProcess.RemoveAt(tasksToDelteIndex[i] - i);
+                        for (int i = 0; i < tasksToDelteIndex.Count; i++)
+                        {
+                            tasksInProcess.RemoveAt(tasksToDelteIndex[i] - i);
+                        }
                     }
-                }
-                var numnum = BigInteger.Pow(divisor, 2);
-                if (numnum <= number)
-                {
-                    if (numnum == number) return false;
-                    tasksInProcess.Add(new DivideTask(number, divisor, 0));
-                }
-                else
-                {
-                    sw.Stop();
-                    Console.WriteLine("all sended in {0}ms", sw.ElapsedMilliseconds);
-                    sw.Reset();
-                    bool output = true;
-                    //task check
-                    Parallel.ForEach(tasksInProcess, (task) =>
+                    var numnum = BigInteger.Pow(divisor, 2);
+                    if (numnum <= number)
                     {
-                        while (!task.Done) { };
+                        if (numnum == number) return false;
+                        tasksInProcess.Add(new DivideTask(number, divisor, 0));
+                    }                    
+                    else
+                    {                        
+                        bool output = true;
+                        //task check
+                        Parallel.ForEach(tasksInProcess, (task) =>
+                        {
+                            while (!task.Done) { };
 
-                        if (task.Result) output = false;
-                    });
-                    return output;
-                    //return
+                            if (task.Result) output = false;
+                        });
+                        return output;
+                        //return
+                    }
+                    tasksInProcess = network.SendTask(tasksInProcess);
                 }
-
-                tasksInProcess = network.SendTask(tasksInProcess);
+            }
+            catch (IndexOutOfRangeException e)
+            {
+                Console.WriteLine(e.Message);
+                throw;
             }
         }
 
