@@ -186,8 +186,9 @@ namespace Primes.Communication
                     Size = myData.GetUInt32(myData.GetOrdinal("Size"));
                     rawData = new byte[Size];
                     myData.GetBytes(myData.GetOrdinal("Value"), 0, rawData, 0, (int)Size);
-
-                    primes.Add(new BigInteger(rawData));
+                    var output = new BigInteger(rawData, true);
+                    if (output > 0) primes.Add(output);
+                    else Console.WriteLine(" asdasd {0}", output);
                 }
             }
             catch (Exception e)
@@ -229,7 +230,7 @@ namespace Primes.Communication
                     using (var cmd = new MySqlCommand("INSERT INTO sys.Primes SET Value = @image1, Size = @image2", con))
                     {
                         cmd.Parameters.Add("@image1", MySqlDbType.LongBlob).Value = data;
-                        cmd.Parameters.Add("@image2", MySqlDbType.UInt32).Value = data.Length;
+                        cmd.Parameters.Add("@image2", MySqlDbType.UInt32).Value = (uint)data.Length;
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -254,7 +255,7 @@ namespace Primes.Communication
                         var data = values[i].ToByteArray(true);
 
                         cmd.Parameters.Add(("@image" + (i * 2 + 1)), MySqlDbType.LongBlob).Value = data;
-                        cmd.Parameters.Add(("@image" + (i * 2 + 2)), MySqlDbType.UInt32).Value = data.Length;
+                        cmd.Parameters.Add(("@image" + (i * 2 + 2)), MySqlDbType.UInt32).Value = (uint)data.Length;
                     };
                     cmd.ExecuteNonQuery();
                 }
