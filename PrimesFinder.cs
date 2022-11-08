@@ -100,10 +100,13 @@ namespace Primes.PrimesFinder
         public async Task<bool> IsPrime(BigInteger number, List<BigInteger> primes)
         {
             var sw = new Stopwatch();
+            sw.Start();
             Console.WriteLine("IsPrime: " + number);
-            int primeIndex = 3;  //[1] = 2
+            //int primeIndex = 3;  //[1] = 2
             bool isDivisible = false;
-            List<DivideTask> tasksInProcess = new List<DivideTask>();
+            //List<DivideTask> tasksInProcess = new List<DivideTask>();
+
+            /*
             if (BasicDivisibility.DivisibleByBasic(number)) return false;
             try
             {
@@ -163,6 +166,15 @@ namespace Primes.PrimesFinder
                 Console.WriteLine(e.Message);
                 throw;
             }
+            */
+
+            for(int primeIndex = 0; primes[primeIndex] * primeIndex <= number & primeIndex < primes.Count; primeIndex++)
+            {
+                if (number % primes[primeIndex] == 0) return false;
+            }
+            sw.Stop();
+            Console.WriteLine("it tooks: " + sw.ElapsedMilliseconds + "ms");
+            return true;
         }
 
     }

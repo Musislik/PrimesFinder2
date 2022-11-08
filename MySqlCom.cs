@@ -236,30 +236,45 @@ namespace Primes.Communication
                 }
             };
         }
-        public void PrimesWriterAtOnce(List<BigInteger> values)
+        public async Task PrimesWriterAtOnce(List<BigInteger> values)
         {
-            Console.WriteLine("Writing");
-            string command = "";
+            Console.WriteLine("Writing, count: " + values.Count);
+            string command = "Insert into sys.Primes(Value, Size) Values";
             for (int i = 0; i < values.Count; i++)
             {
-                command += "INSERT INTO sys.Primes SET Value = @image" + (i*2 + 1) + ", Size = @image" + (i * 2 + 2) + ";";
+                command += " (@image" + i + ", " + values[i].GetByteCount(true) + ")";
+
+                if (i + 1 < values.Count)
+                {
+                    command += ",";
+                }
+                else
+                {
+                    command += ";";
+                }
+
+                //if(i + 2 >= values.Count) command += " (@image" + (i + 1) + ", " + values[i+1].GetByteCount(true) + ");";
+
+                //command += "INSERT INTO sys.Primes SET Value = @image" + (i*2 + 1) + ", Size = @image" + (i * 2 + 2) + ";";
+
             }
-            
             using (var con = new MySqlConnection(mySqlConnectionString_PrimesWriter))
             {
                 using (var cmd = new MySqlCommand(command, con))
-                {
-                    con.Open();
+                {                    
                     for (int i = 0; i < values.Count; i++)
                     {
                         var data = values[i].ToByteArray(true);
 
-                        cmd.Parameters.Add(("@image" + (i * 2 + 1)), MySqlDbType.LongBlob).Value = data;
-                        cmd.Parameters.Add(("@image" + (i * 2 + 2)), MySqlDbType.UInt32).Value = (uint)data.Length;
+                        cmd.Parameters.Add(("@image" + i), MySqlDbType.LongBlob).Value = data;
+                        //cmd.Parameters.Add(("@image" + (i * 2 + 2)), MySqlDbType.UInt32).Value = (uint)data.Length;
                     };
-                    cmd.ExecuteNonQuery();
-                }
+                    con.Open();
+                    await cmd.ExecuteNonQueryAsync();
+                    con.Close();
+                }                
             }
+            Console.WriteLine("Writed");
         }
         public void ParallelPrimesWriter(List<BigInteger> values)
         {
