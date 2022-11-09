@@ -7,8 +7,8 @@ using System.Diagnostics;
 
 bool running = false;
 //string connStringDB = "Server=88.101.172.29; Port=2606; Database=sys; ";
-//string connStringDB = "Server=PrimesDB; Port=3306; Database=sys; ";
-string connStringDB = "Server=10.0.1.26; Port=3306; Database=sys; ";
+string connStringDB = "Server=PrimesDB; Port=3306; Database=sys; ";
+//string connStringDB = "Server=10.0.1.26; Port=3306; Database=sys; ";
 
 
 var network = new Network(Environment.GetEnvironmentVariable("Scan") == "True", Convert.ToInt32(Environment.GetEnvironmentVariable("WaitTime")), Convert.ToInt32(Environment.GetEnvironmentVariable("TasksLimit")));
@@ -21,7 +21,7 @@ var network = new Network(Environment.GetEnvironmentVariable("Scan") == "True", 
 
 var sql = new MySqlCom(connStringDB);
 Console.WriteLine("sql state: " + sql.State);
-int parallelCount = 100, primesWriterCount = 1000;
+int parallelCount = 100, primesWriterCount = 10000;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -137,28 +137,51 @@ async Task Run()
 
 
             sw.Stop();
-            Console.WriteLine("asdasd " + sw.ElapsedMilliseconds); 
-            sql.PrimesWriterAtOnce(primesToWrite);
+            Console.WriteLine(sw.ElapsedMilliseconds);
+            if (tasks.Count > 0)
+            {
+                var j = 0;
+                while (!tasks[0].IsCompleted & tasks.Count > 0)
+                {
+                    Thread.Sleep(10);
+                    j++;
+                }
+                Console.WriteLine("w: " + j);
+            }
+
+            tasks.Clear();
+            var writingPrimes = primesToWrite.ToArray();
+            Console.WriteLine("count: {0}", primes.Count);
+            tasks.Add(new Task(async () => await sql.PrimesWriterAtOnce(writingPrimes)) );
+            tasks[0].Start();
             primesToWrite.Clear();
             sw.Reset();
-            sw.Start();
-            //potøeba poèítání pøi zápisu
-            
-        }
-        Console.WriteLine("count: {0}", primes.Count);
+            sw.Start();            
+        }        
     };
     //sw.Start();
     //Console.WriteLine("writing primes, count: " + primes.Count);
     //Write(primes);
     //sw.Stop();
     //Console.WriteLine("done, it tooks: " + sw.ElapsedMilliseconds);
-    sql.PrimesWriterAtOnce(primesToWrite);
+    if (tasks.Count > 0)
+    {
+        var j = 0;
+        while (!tasks[0].IsCompleted & tasks.Count > 0)
+        {
+            Thread.Sleep(10);
+            j++;    
+        }
+        Console.WriteLine("w: " + j);
+    }
+    var writingPrimes2 = primesToWrite.ToArray();
+    sql.PrimesWriterAtOnce(writingPrimes2);
 }
 
 async Task<bool> IsPrime(BigInteger number, List<BigInteger> primes)
 {
     var sw = new Stopwatch();
-    Console.WriteLine("IsPrime: " + number);
+    //Console.WriteLine("IsPrime: " + number);
     bool isDivisible = false;
     int biggestIndex = 0;
     bool exit = false;

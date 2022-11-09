@@ -236,15 +236,15 @@ namespace Primes.Communication
                 }
             };
         }
-        public async Task PrimesWriterAtOnce(List<BigInteger> values)
+        public async Task PrimesWriterAtOnce(BigInteger[] values)
         {
-            Console.WriteLine("Writing, count: " + values.Count);
+            //Console.WriteLine("Writing, count: " + values.Length);
             string command = "Insert into sys.Primes(Value, Size) Values";
-            for (int i = 0; i < values.Count; i++)
+            for (int i = 0; i < values.Length; i++)
             {
                 command += " (@image" + i + ", " + values[i].GetByteCount(true) + ")";
 
-                if (i + 1 < values.Count)
+                if (i + 1 < values.Length)
                 {
                     command += ",";
                 }
@@ -262,7 +262,7 @@ namespace Primes.Communication
             {
                 using (var cmd = new MySqlCommand(command, con))
                 {                    
-                    for (int i = 0; i < values.Count; i++)
+                    for (int i = 0; i < values.Length; i++)
                     {
                         var data = values[i].ToByteArray(true);
 
@@ -274,7 +274,7 @@ namespace Primes.Communication
                     con.Close();
                 }                
             }
-            Console.WriteLine("Writed");
+            //Console.WriteLine("Writed");
         }
         public void ParallelPrimesWriter(List<BigInteger> values)
         {
