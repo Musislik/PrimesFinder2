@@ -86,6 +86,7 @@ namespace Primes.Communication
                 {
 
                     System.Console.WriteLine(e.Message);
+                    throw;
                 }
                 return 0;
             }
