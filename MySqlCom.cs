@@ -54,6 +54,18 @@ namespace Primes.Communication
             InsertCommand("use sys; delete from Primes where PrimeID > 0; ALTER TABLE Primes AUTO_INCREMENT=1;");
             PrimesWriter(new List<BigInteger> { new BigInteger(2), new BigInteger(3), new BigInteger(5), new BigInteger(7) });
         }
+        public void InsertWritingCommand(string command, uint count)
+        {
+            using (var connection = new MySqlConnection(mySqlConnectionString_Root))
+            {
+                connection.Open();
+                var Command = connection.CreateCommand();
+                Command.CommandType = System.Data.CommandType.Text;
+                Command.CommandText = "use sys; ";
+                Command.ExecuteNonQuery();
+                //asdasdasd
+            }
+        }
 
         public BigInteger LastPrime
         {
@@ -88,7 +100,6 @@ namespace Primes.Communication
                     System.Console.WriteLine(e.Message);
                     throw;
                 }
-                return 0;
             }
         }
         //public BigInteger SecLastPrime
@@ -199,24 +210,7 @@ namespace Primes.Communication
             conn.Close();
 
 
-            //var Primes = new List<BigInteger>();
-            //try
-            //{
-            //    using (var connection = new MySqlConnection(mySqlConnectionString_PrimesReader))
-            //    {
-            //        connection.Open();
-
-            //        using var Command = connection.CreateCommand();
-            //        Command.CommandType = System.Data.CommandType.Text;
-            //        Command.CommandText = "select value from sys.Primes;";
-            //        var dataReader = Command.ExecuteReader();
-            //        while (dataReader.Read()) Primes.Add(BigInteger.Parse(dataReader.GetString("value")));
-            //    }
-            //}
-            //catch (MySqlException e)
-            //{ 
-            //    System.Console.WriteLine(e.Message);
-            //}
+            
             return primes;
         }
         public void PrimesWriter(List<BigInteger> values)
@@ -239,25 +233,31 @@ namespace Primes.Communication
         }
         public async Task PrimesWriterAtOnce(BigInteger[] values)
         {
+            string path = "mysql/commands/" + values.Length + "primes.txt";
             //Console.WriteLine("Writing, count: " + values.Length);
             string command = "Insert into sys.Primes(Value, Size) Values";
-            for (int i = 0; i < values.Length; i++)
+            if (File.Exists(path))
             {
-                command += " (@image" + i + ", " + values[i].GetByteCount(true) + ")";
-
-                if (i + 1 < values.Length)
+                command = File.ReadAllText(path);
+            }
+            else
+            {
+                for (int i = 0; i < values.Length; i++)
                 {
-                    command += ",";
+
+                    command += " (@image" + i + ", " + values[i].GetByteCount(true) + ")";
+
+                    if (i + 1 < values.Length)
+                    {
+                        command += ",";
+                    }
+                    else
+                    {
+                        command += ";";
+                    }
                 }
-                else
-                {
-                    command += ";";
-                }
-
-                //if(i + 2 >= values.Count) command += " (@image" + (i + 1) + ", " + values[i+1].GetByteCount(true) + ");";
-
-                //command += "INSERT INTO sys.Primes SET Value = @image" + (i*2 + 1) + ", Size = @image" + (i * 2 + 2) + ";";
-
+                File.Create(path).Close();
+                File.WriteAllText(path, command);
             }
             using (var con = new MySqlConnection(mySqlConnectionString_PrimesWriter))
             {
@@ -277,6 +277,59 @@ namespace Primes.Communication
             }
             //Console.WriteLine("Writed");
         }
+        public async Task PrimesWriterByProcedure(BigInteger[] values)
+        {
+            if (values[0].GetByteCount(true) == values[values.Length - 1].GetByteCount(true))
+            {
+                string command = "";
+
+                switch (values.Length)
+                {
+                    
+                    case 0:
+                        Console.WriteLine("Nothing to write");
+                        break;
+                    case 1:
+                        await PrimesWriterAtOnce(values);
+                        break;
+                    default:
+                        string path = "/mysql/commands/write/" + values.Length + "primes.txt";
+                        if (File.Exists(path))
+                        {
+                            command = "call Write" + values.Length + "Primes(" + values[0].GetByteCount(true);
+                            command += File.ReadAllText(path);
+
+                            using (var con = new MySqlConnection(mySqlConnectionString_PrimesWriter))
+                            {
+                                using (var cmd = new MySqlCommand(command, con))
+                                {
+                                    for (int i = 0; i < values.Length; i++)
+                                    {
+                                        var data = values[i].ToByteArray(true);
+
+                                        cmd.Parameters.Add(("@image" + i), MySqlDbType.LongBlob).Value = data;
+                                    };
+                                    con.Open();
+                                    await cmd.ExecuteNonQueryAsync();
+                                    con.Close();//asdasdasdasd
+                                }
+                            }
+                            break;
+                        }
+                        else
+                        {
+                            Console.WriteLine("Old writing");
+                            await PrimesWriterAtOnce(values);
+                            break;
+                        }
+                }
+            }
+            else
+            {
+                await PrimesWriterAtOnce(values);
+            }
+        }
+
         public void ParallelPrimesWriter(List<BigInteger> values)
         {
             if (values.Count == 0 || values == null) goto end;
