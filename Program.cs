@@ -7,8 +7,8 @@ using System.Diagnostics;
 
 bool running = false;
 //string connStringDB = "Server=88.101.172.29; Port=2606; Database=sys; ";
-//string connStringDB = "Server=PrimesDB; Port=3306; Database=sys; ";
-string connStringDB = "Server=10.0.1.26; Port=3306; Database=sys; ";
+string connStringDB = "Server=PrimesDB; Port=3306; Database=sys; ";
+//string connStringDB = "Server=10.0.1.26; Port=3306; Database=sys; ";
 
 
 var network = new Network(Environment.GetEnvironmentVariable("Scan") == "True", Convert.ToInt32(Environment.GetEnvironmentVariable("WaitTime")), Convert.ToInt32(Environment.GetEnvironmentVariable("TasksLimit")));
@@ -21,7 +21,7 @@ var network = new Network(Environment.GetEnvironmentVariable("Scan") == "True", 
 
 var sql = new MySqlCom(connStringDB);
 Console.WriteLine("sql state: " + sql.State);
-int parallelCount = 1000, primesWriterCount = 100000;
+int parallelCount = 1000, primesWriterCount = 10000;
 var primesToWrite = new List<BigInteger>();
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,18 +34,12 @@ app.MapGet("/", () => "Hello World!");
 
 app.MapGet("/start", () =>
 {
-    //if (!running)
-    //{        
-    //    running = true;
-    //    Task.Run(() => Run());
-    //}
-    Parallel.For(100, 11000, (i) => 
+    if (!running)
     {
-        aaa(i, 4);
-        aaa(i, 5);
-        aaa(i, 6);
-        global::System.Console.WriteLine(i);
-    });
+        running = true;
+        Task.Run(() => Run());
+    }
+
 });
 app.MapGet("/stop", () =>
 {
@@ -123,7 +117,9 @@ async Task Run()
     {
         Console.WriteLine("Starting to count primes. PrallelCount = {0}, PrimesWriterCount = {1}.", parallelCount, primesWriterCount);
         var sw = new Stopwatch();
+        Console.WriteLine("Reading primes");
         List<BigInteger> primes = sql.PrimesReader();
+        Console.WriteLine("Readed");
         List<Task> tasks = new List<Task>();
         List<Task> tasks2 = new List<Task>();
         BigInteger firstNumberToCheck = primes[primes.Count - 1] + 2;
@@ -146,6 +142,7 @@ async Task Run()
             //{
                 
             //}
+            sw.Start();
             Parallel.For(0, parallelCount, (i) =>
             {
                 tasks2.Add(IsPrime(numberToCheck + (i * 2), primes));
@@ -167,10 +164,9 @@ async Task Run()
             //Write
             if (primesToWrite.Count > primesWriterCount || BigInteger.Pow(primes[primes.Count - 1], 2) <= numberToCheck)
             {
-                
+
                 sw.Stop();
                 Console.WriteLine("couting tooks: " + sw.ElapsedMilliseconds);
-                sw.Restart();
                 if (tasks.Count > 0)
                 {
                     while (!tasks[0].IsCompleted & tasks.Count > 0)
@@ -185,9 +181,8 @@ async Task Run()
                 tasks.Add(new Task(async () => await sql.PrimesWriterAtOnce(writingPrimes)));
                 tasks[0].Start();
                 primesToWrite.Clear();
-                sw.Stop();
-                Console.WriteLine("writing tooks: " + sw.ElapsedMilliseconds);
-                sw.Restart();
+                sw.Reset();
+                sw.Start();
             }
         };
 

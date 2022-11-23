@@ -233,15 +233,9 @@ namespace Primes.Communication
         }
         public async Task PrimesWriterAtOnce(BigInteger[] values)
         {
-            string path = "mysql/commands/" + values.Length + "primes.txt";
             //Console.WriteLine("Writing, count: " + values.Length);
             string command = "Insert into sys.Primes(Value, Size) Values";
-            if (File.Exists(path))
-            {
-                command = File.ReadAllText(path);
-            }
-            else
-            {
+            
                 for (int i = 0; i < values.Length; i++)
                 {
 
@@ -256,9 +250,7 @@ namespace Primes.Communication
                         command += ";";
                     }
                 }
-                File.Create(path).Close();
-                File.WriteAllText(path, command);
-            }
+
             using (var con = new MySqlConnection(mySqlConnectionString_PrimesWriter))
             {
                 using (var cmd = new MySqlCommand(command, con))
