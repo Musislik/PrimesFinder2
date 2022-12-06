@@ -369,5 +369,98 @@ namespace Primes.Communication
                 yield return primes[index];
         }
 
+        public void ProcedureCreator(int primesWriterCount)
+        {
+            string command = "USE `sys`; \nDROP procedure IF EXISTS `Write" + primesWriterCount + "Primes`; \nCREATE PROCEDURE `Write" + primesWriterCount + "Primes` (";
+
+            for (int i = 0; i < primesWriterCount; i++)
+            {
+                command += "in value" + i + " longblob, in size" + i + " int";
+
+                if (i + 1 < primesWriterCount)
+                {
+                    command += ", ";
+                }
+                else
+                {
+                    command += ") \nBegin \nInsert into sys.Primes(Value, Size) Values";
+                }
+            }
+            for (int i = 0; i < primesWriterCount; i++)
+            {
+                command += "(value" + i + ", size" + i + ")";
+
+                if (i + 1 < primesWriterCount)
+                {
+                    command += ", ";
+                }
+                else
+                {
+                    command += "; \nEND;";
+                }
+            }
+            InsertCommand(command);
+
+        }
+    
+        public void ProcedureCallStringCreator(int primesWriterCount)
+        {
+            //zkontrolovat
+            string path = "/mysql/commands/procedureCalls/";
+            string filePath = "/mysql/commands/procedureCalls/" + primesWriterCount + ".txt";
+            string command = "call Write" + primesWriterCount +"Primes(";
+
+            try
+            {
+                for (int i = 0; i < primesWriterCount; i++)
+                {
+                    command += "@value" + i + " ,@size" + i;
+
+                    if (i + 1 < primesWriterCount)
+                    {
+                        command += ", ";
+                    }
+                    else
+                    {
+                        command += ");";
+                    }
+                }
+                for (int i = 0; i < primesWriterCount; i++)
+                {
+                    command += "(value" + i + ", size" + i + ")";
+
+                    if (i + 1 < primesWriterCount)
+                    {
+                        command += ", ";
+                    }
+                    else
+                    {
+                        command += "; \nEND;";
+                    }
+                }
+                if (Directory.Exists(path))
+                {
+                    if (File.Exists(filePath))
+                    {
+                        Console.WriteLine("overwriting file: " + filePath);
+                        File.WriteAllTextAsync(filePath, command);
+                    }
+                    else
+                    {
+                        File.WriteAllTextAsync(filePath, command);
+                    }
+                }
+                else
+                {
+                    Directory.CreateDirectory(path);
+                    File.WriteAllTextAsync(filePath, command);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                throw;
+            }
+        }
     }
 }
