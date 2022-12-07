@@ -322,6 +322,24 @@ namespace Primes.Communication
             }
         }
 
+        public void PrimesWriter(List<BigInteger> values)
+        {
+
+            string path = "./mysql/commands/procedureCalls/";
+            string filePath = "./mysql/commands/procedureCalls/" + values.Count + ".txt";
+            string command;
+
+            if (File.Exists(filePath))
+            {
+                command = File.ReadAllText(filePath);
+            }
+            else
+            {
+                ProcedureCallStringCreator(values.Count);
+            }
+            
+
+        }
         public void ParallelPrimesWriter(List<BigInteger> values)
         {
             if (values.Count == 0 || values == null) goto end;
@@ -406,8 +424,8 @@ namespace Primes.Communication
         public void ProcedureCallStringCreator(int primesWriterCount)
         {
             //zkontrolovat
-            string path = "/mysql/commands/procedureCalls/";
-            string filePath = "/mysql/commands/procedureCalls/" + primesWriterCount + ".txt";
+            string path = "./mysql/commands/procedureCalls/";
+            string filePath = "./mysql/commands/procedureCalls/" + primesWriterCount + ".txt";
             string command = "call Write" + primesWriterCount +"Primes(";
 
             try
@@ -424,20 +442,7 @@ namespace Primes.Communication
                     {
                         command += ");";
                     }
-                }
-                for (int i = 0; i < primesWriterCount; i++)
-                {
-                    command += "(value" + i + ", size" + i + ")";
-
-                    if (i + 1 < primesWriterCount)
-                    {
-                        command += ", ";
-                    }
-                    else
-                    {
-                        command += "; \nEND;";
-                    }
-                }
+                }                
                 if (Directory.Exists(path))
                 {
                     if (File.Exists(filePath))

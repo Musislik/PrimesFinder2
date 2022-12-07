@@ -40,7 +40,7 @@ app.MapGet("/start", () =>
     //    Task.Run(() => Run());
     //}
 
-    sql.ProcedureCreator(10000);
+    
 
 });
 app.MapGet("/stop", () =>
@@ -110,6 +110,8 @@ app.MapPost("/mysql/set/connString", (string connString) =>
     }
     return StatusCodes.Status200OK;
 });
+
+sql.ProcedureCallStringCreator(1000);
 
 app.Run();
 
