@@ -1,0 +1,1 @@
+call Write2Primes(@value0 ,@size0, @value1 ,@size1);

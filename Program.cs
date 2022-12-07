@@ -111,7 +111,7 @@ app.MapPost("/mysql/set/connString", (string connString) =>
     return StatusCodes.Status200OK;
 });
 
-sql.ProcedureCallStringCreator(1000);
+sql.PrimesWriter2(new List<BigInteger> { 1,5});
 
 app.Run();
 

@@ -322,12 +322,12 @@ namespace Primes.Communication
             }
         }
 
-        public void PrimesWriter(List<BigInteger> values)
+        public void PrimesWriter2(List<BigInteger> values)
         {
 
             string path = "./mysql/commands/procedureCalls/";
             string filePath = "./mysql/commands/procedureCalls/" + values.Count + ".txt";
-            string command;
+            string command = null;
 
             if (File.Exists(filePath))
             {
@@ -336,7 +336,45 @@ namespace Primes.Communication
             else
             {
                 ProcedureCallStringCreator(values.Count);
+                command = File.ReadAllText(filePath);
             }
+
+            if (State)
+            {
+                try
+                {
+                    using (var connection = new MySqlConnection(mySqlConnectionString_PrimesWriter))
+                    {
+
+                        var Command = connection.CreateCommand();
+                        Command.CommandType = System.Data.CommandType.Text;
+                        Command.CommandText = command;
+
+                        for (int i = 0; i < values.Count; i++)
+                        {
+                            var data = values[i].ToByteArray(true);
+                            Command.Parameters.Add(("@value" + i), MySqlDbType.LongBlob).Value = data;
+                            Command.Parameters.Add(("@size" + i), MySqlDbType.Int32).Value = values[i].GetByteCount(true);
+                        }
+
+                        connection.Open();
+                        Command.ExecuteNonQuery();
+                    }
+                }
+                catch (MySqlException e) when (e.InnerException.Message.Contains("Parameter") & e.InnerException.Message.Contains("must be defined."))
+                {
+                    Console.WriteLine(e.ToString());
+                    throw;
+                }
+                catch (MySqlException e)
+                { }
+            }
+            else
+            {
+                Console.WriteLine("DB is not connected! Failed to write!");
+            }
+
+
             
 
         }
@@ -423,7 +461,6 @@ namespace Primes.Communication
     
         public void ProcedureCallStringCreator(int primesWriterCount)
         {
-            //zkontrolovat
             string path = "./mysql/commands/procedureCalls/";
             string filePath = "./mysql/commands/procedureCalls/" + primesWriterCount + ".txt";
             string command = "call Write" + primesWriterCount +"Primes(";
