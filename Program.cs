@@ -7,8 +7,8 @@ using System.Diagnostics;
 
 bool running = false;
 //string connStringDB = "Server=88.101.172.29; Port=2606; Database=sys; ";
-//string connStringDB = "Server=PrimesDB; Port=3306; Database=sys; ";
-string connStringDB = "Server=10.0.1.26; Port=3306; Database=sys; ";
+string connStringDB = "Server=PrimesDB; Port=3306; Database=sys; ";
+//string connStringDB = "Server=10.0.1.26; Port=3306; Database=sys; ";
 
 
 var network = new Network(Environment.GetEnvironmentVariable("Scan") == "True", Convert.ToInt32(Environment.GetEnvironmentVariable("WaitTime")), Convert.ToInt32(Environment.GetEnvironmentVariable("TasksLimit")));
@@ -34,14 +34,11 @@ app.MapGet("/", () => "Hello World!");
 
 app.MapGet("/start", () =>
 {
-    //if (!running)
-    //{
-    //    running = true;
-    //    Task.Run(() => Run());
-    //}
-
-    
-
+    if (!running)
+    {
+        running = true;
+        Task.Run(() => Run());
+    }
 });
 app.MapGet("/stop", () =>
 {
@@ -111,8 +108,6 @@ app.MapPost("/mysql/set/connString", (string connString) =>
     return StatusCodes.Status200OK;
 });
 
-sql.PrimesWriter2(new List<BigInteger> { 1,5});
-
 app.Run();
 
 async Task Run()
@@ -148,7 +143,7 @@ async Task Run()
             //}
             sw.Start();
             Parallel.For(0, parallelCount, (i) =>
-            {                
+            {
                 tasks2.Add(IsPrime(numberToCheck + (i * 2), primes));
             });
             //Wait
@@ -182,7 +177,7 @@ async Task Run()
                 tasks.Clear();
                 var writingPrimes = primesToWrite.ToArray();
                 Console.WriteLine("count: {0}", primes.Count);
-                tasks.Add(new Task(async () => await sql.PrimesWriterAtOnce(writingPrimes)));
+                tasks.Add(new Task(async () => await sql.PrimesWriter(writingPrimes)));
                 tasks[0].Start();
                 primesToWrite.Clear();
                 sw.Reset();
@@ -200,7 +195,7 @@ async Task Run()
             Console.WriteLine("Done");
         }
         var writingPrimes2 = primesToWrite.ToArray();
-        sql.PrimesWriterAtOnce(writingPrimes2);
+        sql.PrimesWriter(writingPrimes2);
         Console.WriteLine("End");
     }
     catch (Exception e)

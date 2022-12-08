@@ -25,7 +25,7 @@ namespace Primes.Communication
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e.Message + this.ConnString);
+                    Console.WriteLine(e.ToString() + this.ConnString);
                     return false;
                 }
 
@@ -52,7 +52,7 @@ namespace Primes.Communication
         public void dbSetup()
         {
             InsertCommand("use sys; delete from Primes where PrimeID > 0; ALTER TABLE Primes AUTO_INCREMENT=1;");
-            PrimesWriter(new List<BigInteger> { new BigInteger(2), new BigInteger(3), new BigInteger(5), new BigInteger(7) });
+            PrimesWriter(new BigInteger[] { new BigInteger(2), new BigInteger(3), new BigInteger(5), new BigInteger(7) });
         }
         public void InsertWritingCommand(string command, uint count)
         {
@@ -97,7 +97,7 @@ namespace Primes.Communication
                 catch (MySqlException e)
                 {
 
-                    System.Console.WriteLine(e.Message);
+                    System.Console.WriteLine(e.ToString());
                     throw;
                 }
             }
@@ -126,7 +126,7 @@ namespace Primes.Communication
         //        }
         //        catch (MySqlException e)
         //        {
-        //            System.Console.WriteLine(e.Message);
+        //            System.Console.WriteLine(e.ToString());
         //        }
         //        return secLastPrime;
         //    }
@@ -171,7 +171,7 @@ namespace Primes.Communication
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                Console.WriteLine(e.ToString());
             }
             return 0;
         }
@@ -205,7 +205,7 @@ namespace Primes.Communication
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                Console.WriteLine(e.ToString());
             }
             conn.Close();
 
@@ -213,7 +213,7 @@ namespace Primes.Communication
             
             return primes;
         }
-        public void PrimesWriter(List<BigInteger> values)
+        public void PrimesWriterOld(List<BigInteger> values)
         {
             
             foreach (BigInteger value in values)
@@ -269,64 +269,14 @@ namespace Primes.Communication
             }
             //Console.WriteLine("Writed");
         }
-        public async Task PrimesWriterByProcedure(BigInteger[] values)
-        {
-            if (values[0].GetByteCount(true) == values[values.Length - 1].GetByteCount(true))
-            {
-                string command = "";
+        
+        
 
-                switch (values.Length)
-                {
-                    
-                    case 0:
-                        Console.WriteLine("Nothing to write");
-                        break;
-                    case 1:
-                        await PrimesWriterAtOnce(values);
-                        break;
-                    default:
-                        string path = "/mysql/commands/write/" + values.Length + "primes.txt";
-                        if (File.Exists(path))
-                        {
-                            command = "call Write" + values.Length + "Primes(" + values[0].GetByteCount(true);
-                            command += File.ReadAllText(path);
-
-                            using (var con = new MySqlConnection(mySqlConnectionString_PrimesWriter))
-                            {
-                                using (var cmd = new MySqlCommand(command, con))
-                                {
-                                    for (int i = 0; i < values.Length; i++)
-                                    {
-                                        var data = values[i].ToByteArray(true);
-
-                                        cmd.Parameters.Add(("@image" + i), MySqlDbType.LongBlob).Value = data;
-                                    };
-                                    con.Open();
-                                    await cmd.ExecuteNonQueryAsync();
-                                    con.Close();//asdasdasdasd
-                                }
-                            }
-                            break;
-                        }
-                        else
-                        {
-                            Console.WriteLine("Old writing");
-                            await PrimesWriterAtOnce(values);
-                            break;
-                        }
-                }
-            }
-            else
-            {
-                await PrimesWriterAtOnce(values);
-            }
-        }
-
-        public void PrimesWriter2(List<BigInteger> values)
+        public async Task PrimesWriter(BigInteger[] values)
         {
 
             string path = "./mysql/commands/procedureCalls/";
-            string filePath = "./mysql/commands/procedureCalls/" + values.Count + ".txt";
+            string filePath = "./mysql/commands/procedureCalls/" + values.Length + ".txt";
             string command = null;
 
             if (File.Exists(filePath))
@@ -335,39 +285,26 @@ namespace Primes.Communication
             }
             else
             {
-                ProcedureCallStringCreator(values.Count);
+                ProcedureCallStringCreator(values.Length);
                 command = File.ReadAllText(filePath);
             }
-
-            if (State)
+            if(State)
             {
                 try
                 {
-                    using (var connection = new MySqlConnection(mySqlConnectionString_PrimesWriter))
-                    {
-
-                        var Command = connection.CreateCommand();
-                        Command.CommandType = System.Data.CommandType.Text;
-                        Command.CommandText = command;
-
-                        for (int i = 0; i < values.Count; i++)
-                        {
-                            var data = values[i].ToByteArray(true);
-                            Command.Parameters.Add(("@value" + i), MySqlDbType.LongBlob).Value = data;
-                            Command.Parameters.Add(("@size" + i), MySqlDbType.Int32).Value = values[i].GetByteCount(true);
-                        }
-
-                        connection.Open();
-                        Command.ExecuteNonQuery();
-                    }
+                    await Write();
                 }
-                catch (MySqlException e) when (e.InnerException.Message.Contains("Parameter") & e.InnerException.Message.Contains("must be defined."))
+                catch (MySqlException e) when (e.Number == 1305) //Procedure is not created
                 {
-                    Console.WriteLine(e.ToString());
-                    throw;
+                    Console.WriteLine("Creating procedure Write{0}Primes", values.Length);
+                    ProcedureCreator(values.Length);
+                    await Write();
                 }
                 catch (MySqlException e)
-                { }
+                {
+                    Console.WriteLine("Unexpected fail. " + e.Message);
+                    throw;
+                }
             }
             else
             {
@@ -375,34 +312,26 @@ namespace Primes.Communication
             }
 
 
-            
-
-        }
-        public void ParallelPrimesWriter(List<BigInteger> values)
-        {
-            if (values.Count == 0 || values == null) goto end;
-            _ = Parallel.ForEach(values, value =>
+            async Task Write()
             {
-
-                try
+                using (var connection = new MySqlConnection(mySqlConnectionString_PrimesWriter))
                 {
-                    using (MySqlConnection connection = new(mySqlConnectionString_PrimesWriter))
-                    {
-                        connection.Open();
-                        var Command = connection.CreateCommand();
-                        Command.CommandType = System.Data.CommandType.Text;
-                        Command.CommandText = "insert into sys.Primes (Value) values (" + value + ");";
-                        Command.ExecuteNonQuery();
-                        connection.Close();
-                    }
-                }
-                catch (MySqlException e)
-                {
-                    System.Console.WriteLine(e.Message);
-                }
 
-            });
-        end:;
+                    var Command = connection.CreateCommand();
+                    Command.CommandType = System.Data.CommandType.Text;
+                    Command.CommandText = command;
+
+                    Parallel.For(0, values.Length, (i) => { 
+                        var data = values[i].ToByteArray(true);
+                        Command.Parameters.Add(("@value" + i), MySqlDbType.LongBlob).Value = data;
+                        Command.Parameters.Add(("@size" + i), MySqlDbType.Int32).Value = values[i].GetByteCount(true);
+                    });
+
+                    await connection.OpenAsync();
+                    await Command.ExecuteNonQueryAsync();
+                }
+            }
+
         }
         //public IEnum methods 
         public IEnumerator<BigInteger> Primes(BigInteger To)
@@ -500,7 +429,7 @@ namespace Primes.Communication
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                Console.WriteLine(e.ToString());
                 throw;
             }
         }
