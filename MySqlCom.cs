@@ -3,6 +3,7 @@ using System.Numerics;
 using Primes;
 using System.Threading;
 using System.Data;
+using System.Diagnostics;
 
 namespace Primes.Communication
 {
@@ -102,45 +103,17 @@ namespace Primes.Communication
                 }
             }
         }
-        //public BigInteger SecLastPrime
-        //{
-        //    get
-        //    {
-        //        BigInteger secLastPrime = 0;
-        //        try
-        //        {
-        //            using (var connection = new MySqlConnection(mySqlConnectionString_PrimesReader))
-        //            {
-        //                connection.Open();
+        
 
-        //                using var Command = connection.CreateCommand();
-        //                Command.CommandType = System.Data.CommandType.Text;
-        //                Command.CommandText = "select * from sys.LastTwoPrimesValue;";
-        //                var dataReader = Command.ExecuteReader();
-        //                while (dataReader.Read())
-        //                {
-        //                    dataReader.GetString("value");
-        //                    secLastPrime = BigInteger.Parse(dataReader.GetString("value"));
-        //                }
-        //            }
-        //        }
-        //        catch (MySqlException e)
-        //        {
-        //            System.Console.WriteLine(e.ToString());
-        //        }
-        //        return secLastPrime;
-        //    }
-        //}
-
-        public void InsertCommand(string command)
+        public async Task InsertCommand(string command)
         {
             using (var connection = new MySqlConnection(mySqlConnectionString_Root))
             {
-                connection.Open();
+                await connection.OpenAsync();
                 var Command = connection.CreateCommand();
                 Command.CommandType = System.Data.CommandType.Text;
                 Command.CommandText = command;
-                Command.ExecuteNonQuery();
+                await Command.ExecuteNonQueryAsync();
             }
         }
         public BigInteger PrimeReader(BigInteger index)
@@ -210,99 +183,30 @@ namespace Primes.Communication
             conn.Close();
 
 
-            
+
             return primes;
         }
-        public void PrimesWriterOld(List<BigInteger> values)
-        {
-            
-            foreach (BigInteger value in values)
-            {
-                var data = value.ToByteArray(true);
-                using (var con = new MySqlConnection(mySqlConnectionString_PrimesWriter))
-                {
-                    con.Open();
-                    using (var cmd = new MySqlCommand("INSERT INTO sys.Primes SET Value = @image1, Size = @image2", con))
-                    {
-                        cmd.Parameters.Add("@image1", MySqlDbType.LongBlob).Value = data;
-                        cmd.Parameters.Add("@image2", MySqlDbType.UInt32).Value = (uint)data.Length;
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-            };
-        }
-        public async Task PrimesWriterAtOnce(BigInteger[] values)
-        {
-            //Console.WriteLine("Writing, count: " + values.Length);
-            string command = "Insert into sys.Primes(Value, Size) Values";
-            
-                for (int i = 0; i < values.Length; i++)
-                {
 
-                    command += " (@image" + i + ", " + values[i].GetByteCount(true) + ")";
 
-                    if (i + 1 < values.Length)
-                    {
-                        command += ",";
-                    }
-                    else
-                    {
-                        command += ";";
-                    }
-                }
 
-            using (var con = new MySqlConnection(mySqlConnectionString_PrimesWriter))
-            {
-                using (var cmd = new MySqlCommand(command, con))
-                {                    
-                    for (int i = 0; i < values.Length; i++)
-                    {
-                        var data = values[i].ToByteArray(true);
-
-                        cmd.Parameters.Add(("@image" + i), MySqlDbType.LongBlob).Value = data;
-                        //cmd.Parameters.Add(("@image" + (i * 2 + 2)), MySqlDbType.UInt32).Value = (uint)data.Length;
-                    };
-                    con.Open();
-                    await cmd.ExecuteNonQueryAsync();
-                    con.Close();
-                }                
-            }
-            //Console.WriteLine("Writed");
-        }
-        
-        
 
         public async Task PrimesWriter(BigInteger[] values)
         {
-
+            var sw = new Stopwatch();
+            sw.Start();
             string path = "./mysql/commands/procedureCalls/";
             string filePath = "./mysql/commands/procedureCalls/" + values.Length + ".txt";
-            string command = null;
-
-            if (File.Exists(filePath))
-            {
-                command = File.ReadAllText(filePath);
-            }
-            else
-            {
-                ProcedureCallStringCreator(values.Length);
-                command = File.ReadAllText(filePath);
-            }
+            string command = await ProcedureCallCommandReader(values.Length);
             if(State)
             {
                 try
                 {
                     await Write();
-                }
-                catch (MySqlException e) when (e.Number == 1305) //Procedure is not created
-                {
-                    Console.WriteLine("Creating procedure Write{0}Primes", values.Length);
-                    ProcedureCreator(values.Length);
-                    await Write();
-                }
+                }                
                 catch (MySqlException e)
                 {
-                    Console.WriteLine("Unexpected fail. " + e.Message);
+                    Console.WriteLine("Unexpected fail. " + e.ToString());
+                    Console.WriteLine(e.ToString());
                     throw;
                 }
             }
@@ -310,6 +214,8 @@ namespace Primes.Communication
             {
                 Console.WriteLine("DB is not connected! Failed to write!");
             }
+            sw.Stop();
+            Console.WriteLine("Writing - {0} - {1}ms", values.Length, sw.ElapsedMilliseconds);
 
 
             async Task Write()
@@ -321,84 +227,77 @@ namespace Primes.Communication
                     Command.CommandType = System.Data.CommandType.Text;
                     Command.CommandText = command;
 
-                    Parallel.For(0, values.Length, (i) => { 
+                    for (int i = 0; i < values.Length; i++)
+                    { 
                         var data = values[i].ToByteArray(true);
                         Command.Parameters.Add(("@value" + i), MySqlDbType.LongBlob).Value = data;
                         Command.Parameters.Add(("@size" + i), MySqlDbType.Int32).Value = values[i].GetByteCount(true);
-                    });
+                    }
 
                     await connection.OpenAsync();
-                    await Command.ExecuteNonQueryAsync();
+                    try
+                    {
+                        await Command.ExecuteNonQueryAsync();
+                    }
+                    catch (MySqlException e) when (e.Number == 1305) //procedura neexistuje
+                    {
+                        await connection.CloseAsync();
+                        await ProcedureCreator(values.Length);
+                        await connection.OpenAsync();
+                        await Command.ExecuteNonQueryAsync();
+                    }
                 }
             }
-
-        }
-        //public IEnum methods 
-        public IEnumerator<BigInteger> Primes(BigInteger To)
-        {
-            var primes = PrimesReader();
-
-            for (int i = 0; primes[i] < To; i++)
-                yield return primes[i];
-        }
-        public IEnumerator<BigInteger> Primes(BigInteger From, BigInteger To)
-        {
-            var primes = PrimesReader();
-            int index = 0;
-            while (primes[index] < From)
+            
+            async Task<string> ProcedureCallCommandReader(int primesWriterCount)
             {
-                if (index < primes.Count) index++;
-                else yield break;
+                var conn = new MySqlConnection(mySqlConnectionString_PrimesReader);
+                var cmd = new MySqlCommand("select CommandText from sys.WritingCommands where Count=" + primesWriterCount, conn);
+                string output = null;
+
+
+                conn.Open();
+                var myData = await cmd.ExecuteReaderAsync();
+
+                if (!myData.HasRows)
+                {
+                    await ProcedureCreator(primesWriterCount);
+                    conn.Close();
+                    conn.Open();
+                    myData = await cmd.ExecuteReaderAsync();
+                }
+                try
+                {
+                    while (myData.Read())
+                    {
+                        output = myData.GetString("CommandText");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.ToString());
+                }
+                conn.Close();
+                return output;
             }
-            for (; primes[index] < To; index++)
-                yield return primes[index];
+
         }
 
-        public void ProcedureCreator(int primesWriterCount)
+        
+
+        public async Task ProcedureCreator(int primesWriterCount)
         {
-            string command = "USE `sys`; \nDROP procedure IF EXISTS `Write" + primesWriterCount + "Primes`; \nCREATE PROCEDURE `Write" + primesWriterCount + "Primes` (";
-
-            for (int i = 0; i < primesWriterCount; i++)
-            {
-                command += "in value" + i + " longblob, in size" + i + " int";
-
-                if (i + 1 < primesWriterCount)
-                {
-                    command += ", ";
-                }
-                else
-                {
-                    command += ") \nBegin \nInsert into sys.Primes(Value, Size) Values";
-                }
-            }
-            for (int i = 0; i < primesWriterCount; i++)
-            {
-                command += "(value" + i + ", size" + i + ")";
-
-                if (i + 1 < primesWriterCount)
-                {
-                    command += ", ";
-                }
-                else
-                {
-                    command += "; \nEND;";
-                }
-            }
-            InsertCommand(command);
-
-        }
-    
-        public void ProcedureCallStringCreator(int primesWriterCount)
-        {
-            string path = "./mysql/commands/procedureCalls/";
-            string filePath = "./mysql/commands/procedureCalls/" + primesWriterCount + ".txt";
-            string command = "call Write" + primesWriterCount +"Primes(";
-
             try
             {
+
+                Console.WriteLine("Creating procedure Write{0}Primes", primesWriterCount);
+                var sw = new Stopwatch();
+                sw.Start();
+                string command = "USE `sys`; \nDROP procedure IF EXISTS `Write" + primesWriterCount + "Primes`; \nCREATE PROCEDURE `Write" + primesWriterCount + "Primes` (";
+
                 for (int i = 0; i < primesWriterCount; i++)
                 {
-                    command += "@value" + i + " ,@size" + i;
+                    command += "in value" + i + " longblob, in size" + i + " int";
 
                     if (i + 1 < primesWriterCount)
                     {
@@ -406,31 +305,91 @@ namespace Primes.Communication
                     }
                     else
                     {
-                        command += ");";
+                        command += ") \nBegin \nInsert into sys.Primes(Value, Size) Values";
                     }
-                }                
-                if (Directory.Exists(path))
+                }
+                for (int i = 0; i < primesWriterCount; i++)
                 {
-                    if (File.Exists(filePath))
+                    command += "(value" + i + ", size" + i + ")";
+
+                    if (i + 1 < primesWriterCount)
                     {
-                        Console.WriteLine("overwriting file: " + filePath);
-                        File.WriteAllTextAsync(filePath, command);
+                        command += ", ";
                     }
                     else
                     {
-                        File.WriteAllTextAsync(filePath, command);
+                        command += "; \nEND;";
                     }
+                }
+                
+                Console.WriteLine("Inserting");
+                await InsertCommand(command);
+                Console.WriteLine("ProcedureCallCreator");
+                await ProcedureCallCreator(primesWriterCount);
+                sw.Stop();
+                Console.WriteLine("Procedure creator - {0} - {1}ms", primesWriterCount, sw.ElapsedMilliseconds);
+            }
+            catch (MySqlException e) when (e.Number == 3507) //moc
+            {
+                Console.WriteLine(e.ToString());
+                throw;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                throw;
+            }
+        }        
+        public async Task ProcedureCallCreator(int primesWriterCount)
+        {
+            var sw = new Stopwatch();
+            sw.Start();
+            string commandText = "call Write" + primesWriterCount + "Primes(";
+            string command = "insert into sys.WritingCommands(Count, CommandText) Values(" + primesWriterCount + ",@image);";
+            for (int i = 0; i < primesWriterCount; i++)
+            {
+                commandText += "@value" + i + " ,@size" + i;
+
+                if (i + 1 < primesWriterCount)
+                {
+                    commandText += ", ";
                 }
                 else
                 {
-                    Directory.CreateDirectory(path);
-                    File.WriteAllTextAsync(filePath, command);
+                    commandText += ");";
                 }
+            }
+
+            try
+            {                
+                await Write();                               
+            }
+            catch (MySqlException e) when (e.Number == 1062) //Duplikace
+            {
+                Console.WriteLine("duplikace");
+                //throw new NotImplementedException();
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.ToString());
                 throw;
+            }
+            sw.Stop();
+            Console.WriteLine("Procedure call creator - {0} - {1}ms", primesWriterCount, sw.ElapsedMilliseconds);
+
+            async Task Write()
+            {
+                using (var connection = new MySqlConnection(mySqlConnectionString_PrimesWriter))
+                {
+                    var Command = connection.CreateCommand();
+                    Command.CommandType = System.Data.CommandType.Text;
+                    Command.CommandText = command;
+                    Command.Parameters.Add("@image", MySqlDbType.LongText).Value = commandText;
+
+                    await connection.OpenAsync();
+                    await Command.ExecuteNonQueryAsync();
+                    
+                }
             }
         }
     }

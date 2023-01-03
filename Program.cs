@@ -7,8 +7,8 @@ using System.Diagnostics;
 
 bool running = false;
 //string connStringDB = "Server=88.101.172.29; Port=2606; Database=sys; ";
-string connStringDB = "Server=PrimesDB; Port=3306; Database=sys; ";
-//string connStringDB = "Server=10.0.1.26; Port=3306; Database=sys; ";
+//string connStringDB = "Server=PrimesDB; Port=3306; Database=sys; ";
+string connStringDB = "Server=10.0.1.26; Port=3306; Database=sys; ";
 
 
 var network = new Network(Environment.GetEnvironmentVariable("Scan") == "True", Convert.ToInt32(Environment.GetEnvironmentVariable("WaitTime")), Convert.ToInt32(Environment.GetEnvironmentVariable("TasksLimit")));
@@ -21,7 +21,7 @@ var network = new Network(Environment.GetEnvironmentVariable("Scan") == "True", 
 
 var sql = new MySqlCom(connStringDB);
 Console.WriteLine("sql state: " + sql.State);
-int parallelCount = 1000, primesWriterCount = 10000;
+int parallelCount = 1000, primesWriterCount = 500;
 var primesToWrite = new List<BigInteger>();
 
 var builder = WebApplication.CreateBuilder(args);
@@ -136,11 +136,6 @@ async Task Run()
         //Main
         for (BigInteger numberToCheck = firstNumberToCheck; running;numberToCheck += parallelCount * 2)
         {
-            //Start
-            //for (int i = 0; i <= parallelCount; i++)
-            //{
-                
-            //}
             sw.Start();
             Parallel.For(0, parallelCount, (i) =>
             {
@@ -177,8 +172,8 @@ async Task Run()
                 tasks.Clear();
                 var writingPrimes = primesToWrite.ToArray();
                 Console.WriteLine("count: {0}", primes.Count);
-                tasks.Add(new Task(async () => await sql.PrimesWriter(writingPrimes)));
-                tasks[0].Start();
+                await sql.PrimesWriter(writingPrimes);
+                Console.WriteLine("test2");
                 primesToWrite.Clear();
                 sw.Reset();
                 sw.Start();
