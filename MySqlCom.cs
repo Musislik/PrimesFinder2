@@ -194,11 +194,11 @@ namespace Primes.Communication
         {
             var sw = new Stopwatch();
             sw.Start();
-            string path = "./mysql/commands/procedureCalls/";
-            string filePath = "./mysql/commands/procedureCalls/" + values.Length + ".txt";
             string command = await ProcedureCallCommandReader(values.Length);
-            if(State)
+            Console.WriteLine("ProcedureCallCommandReader: {0}ms", sw.ElapsedMilliseconds);
+            if (State)
             {
+                Console.WriteLine("state: {0}ms",sw.ElapsedMilliseconds);
                 try
                 {
                     await Write();

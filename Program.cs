@@ -131,27 +131,36 @@ async Task Run()
             {
                 IsPrime(numberToCheck0 + i * 2, primes);
             }
+            var writingPrimes = primesToWrite.ToArray();
+            primesToWrite.Clear();
+            Console.WriteLine("count: {0}", primes.Count);
+            await sql.PrimesWriter(writingPrimes);
         }
 
         //Main
-        for (BigInteger numberToCheck = firstNumberToCheck; running;numberToCheck += parallelCount * 2)
+        for (BigInteger numberToCheck = firstNumberToCheck; running & primes.Count >= 100 ;numberToCheck += parallelCount * 2)
         {
             sw.Start();
-            Parallel.For(0, parallelCount, (i) =>
+            //Parallel.For(0, parallelCount, (i) =>
+            //{
+            //tasks2.Add(IsPrime(numberToCheck + (i * 2), primes));
+            //});
+
+            for (int i = 0; i < parallelCount; i++)
             {
                 tasks2.Add(IsPrime(numberToCheck + (i * 2), primes));
-            });
+            }
+
             //Wait
             if (tasks2.Count > 0)
             {
                 for (int i = 0; i < tasks2.Count; i++)
                 {
-                    //Console.WriteLine("Waiting");
                     while (!tasks2[i].IsCompleted)
                     {
+                        Console.WriteLine("Waiting");
                         Thread.Sleep(10);                        
                     }
-                    //Console.WriteLine("Done");
                 }
                 tasks2.Clear();
             }
@@ -191,7 +200,6 @@ async Task Run()
         }
         var writingPrimes2 = primesToWrite.ToArray();
         sql.PrimesWriter(writingPrimes2);
-        Console.WriteLine("End");
     }
     catch (Exception e)
     {
@@ -241,9 +249,9 @@ bool IsPrime2(BigInteger number, List<BigInteger> primes)
         for (int primeIndex = 0; primes[primeIndex] * primes[primeIndex] <= number; primeIndex++)
         {
             biggestIndex = primeIndex;
-            if (primes.Count < primeIndex + 1)
+            while (primes.Count < primeIndex + 1)
             {
-                throw new Exception("Malo nacetlych prvocisel");
+                Thread.Sleep(5);
             }
         }
         for (int i = 0; i < biggestIndex; i++)
@@ -273,9 +281,14 @@ async Task<bool> IsPrime(BigInteger number, List<BigInteger> primes)
         bool isDivisible = false;
         int biggestIndex = 0;
         bool exit = false;
+
         for (int primeIndex = 0; primes[primeIndex] * primes[primeIndex] <= number; primeIndex++)
         {
-            biggestIndex = primeIndex;
+            biggestIndex = primeIndex + 1;
+            while (primes.Count < biggestIndex + 1)
+            {
+                Thread.Sleep(5);
+            }
         }
         Parallel.For(0, biggestIndex, async (i, aa) =>
         {
@@ -285,9 +298,11 @@ async Task<bool> IsPrime(BigInteger number, List<BigInteger> primes)
                 exit = true;
                 aa.Stop();
             }
+            });
         });
-            
-        });
+
+        
+
         if (exit) return false;
         primes.Add(number);
         primesToWrite.Add(number);
