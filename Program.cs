@@ -1,23 +1,13 @@
-using Primes.Networking;
 using System.Numerics;
-using Primes.PrimesFinder;
 using Primes.Communication;
 using System.Net.Http.Headers;
 using System.Diagnostics;
+using Primes.Divisibility;
 
 bool running = false;
 //string connStringDB = "Server=88.101.172.29; Port=2606; Database=sys; ";
 //string connStringDB = "Server=PrimesDB; Port=3306; Database=sys; ";
 string connStringDB = "Server=10.0.1.26; Port=3306; Database=sys; ";
-
-
-var network = new Network(Environment.GetEnvironmentVariable("Scan") == "True", Convert.ToInt32(Environment.GetEnvironmentVariable("WaitTime")), Convert.ToInt32(Environment.GetEnvironmentVariable("TasksLimit")));
-//var network = new Network(true, 100, 1000000000);
-
-//HttpClient broadCast = new HttpClient();
-//broadCast.BaseAddress = new Uri("http://255.255.255.255:255/");
-//broadCast.DefaultRequestHeaders.Clear();
-//broadCast.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
 var sql = new MySqlCom(connStringDB);
 Console.WriteLine("sql state: " + sql.State);
@@ -208,72 +198,10 @@ async Task Run()
     }
 }
 
-async Task Run2()
-{
-    try
-    {
-        Console.WriteLine("Starting to count primes. PrallelCount = {0}, PrimesWriterCount = {1}.", parallelCount, primesWriterCount);
-        var sw = new Stopwatch();
-        Console.WriteLine("Reading primes");
-        List<BigInteger> primes = sql.PrimesReader();
-        Console.WriteLine("Readed");
-        List<Task> tasks = new List<Task>();
-        List<Task> tasks2 = new List<Task>();
-        BigInteger firstNumberToCheck = primes[primes.Count - 1] + 2;
-        if (primes.Count < 100)
-        {
-            throw new NotImplementedException();
-        }
-
-
-
-
-    }
-    catch(Exception e)
-    {
-        Console.WriteLine(e.Message);
-    }
-}
-
-bool IsPrime2(BigInteger number, List<BigInteger> primes)
-{
-    if (primes == null) throw new ArgumentNullException(nameof(primes));
-
-    try
-    {
-        var sw = new Stopwatch();
-        //Console.WriteLine("IsPrime: " + number);
-        bool isDivisible = false;
-        int biggestIndex = 0;
-        bool exit = false;
-        for (int primeIndex = 0; primes[primeIndex] * primes[primeIndex] <= number; primeIndex++)
-        {
-            biggestIndex = primeIndex;
-            while (primes.Count < primeIndex + 1)
-            {
-                Thread.Sleep(5);
-            }
-        }
-        for (int i = 0; i < biggestIndex; i++)
-        {
-            if (number % primes[i] == 0)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-    catch (Exception e)
-    {
-        Console.WriteLine(e.Message);
-        throw;
-    }
-}
-
-
 
 async Task<bool> IsPrime(BigInteger number, List<BigInteger> primes)
 {
+    if (primes == null) throw new ArgumentNullException(nameof(primes));
     try
     {
         var sw = new Stopwatch();
@@ -282,6 +210,12 @@ async Task<bool> IsPrime(BigInteger number, List<BigInteger> primes)
         int biggestIndex = 0;
         bool exit = false;
 
+        sw.Start();
+        if(BasicDivisibility.DivisibleByThree(number) ^ BasicDivisibility.DivisibleByFive(number))
+        {
+            return false;
+        }
+        
         for (int primeIndex = 0; primes[primeIndex] * primes[primeIndex] <= number; primeIndex++)
         {
             biggestIndex = primeIndex + 1;
@@ -312,36 +246,5 @@ async Task<bool> IsPrime(BigInteger number, List<BigInteger> primes)
     {
         Console.WriteLine(e.Message);
         throw;
-    }
-}
-
-void aaa(int n, int m)
-{
-    string output = "";
-    string path = "mysql/commands/" + m + "/" + n + "primes.txt";
-    string folderPath = "mysql/commands/" + m;
-    if (File.Exists(path))
-    {
-        //output = File.ReadAllText(path);
-    }
-    else
-    {
-        for (int i = 0; i < n; i++)
-        {
-
-            output += " (@image" + i + ", " + m + ")";
-
-            if (i + 1 < n)
-            {
-                output += ",";
-            }
-            else
-            {
-                output += ";";
-            }
-        }
-        if(!Directory.Exists(folderPath))Directory.CreateDirectory(folderPath);
-        File.Create(path).Close();
-        File.WriteAllText(path, output);
     }
 }
