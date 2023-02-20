@@ -11,7 +11,7 @@ string connStringDB = "Server=10.0.1.26; Port=3306; Database=sys; ";
 
 var sql = new MySqlCom(connStringDB);
 Console.WriteLine("sql state: " + sql.State);
-int parallelCount = 1000, primesWriterCount = 500;
+int parallelCount = 100, primesWriterCount = 100;
 var primesToWrite = new List<BigInteger>();
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +19,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers().AddJsonOptions((options) => { options.JsonSerializerOptions.PropertyNamingPolicy = null; });
 
 var app = builder.Build();
+
+Console.WriteLine("Reading primes");
+
+Console.WriteLine("Readed");
+
 
 app.MapGet("/", () => "Hello World!");
 
@@ -97,6 +102,18 @@ app.MapPost("/mysql/set/connString", (string connString) =>
     }
     return StatusCodes.Status200OK;
 });
+app.MapGet("/export", () =>
+{
+    if (running)
+    {        
+        return StatusCodes.Status409Conflict;
+    }
+    else
+    {
+       // sql.PrimesExport(primes);
+        return StatusCodes.Status200OK;
+    }
+});
 
 app.Run();
 
@@ -104,11 +121,9 @@ async Task Run()
 {
     try
     {
+        List<BigInteger> primes = sql.PrimesReader(0);
         Console.WriteLine("Starting to count primes. PrallelCount = {0}, PrimesWriterCount = {1}.", parallelCount, primesWriterCount);
         var sw = new Stopwatch();
-        Console.WriteLine("Reading primes");
-        List<BigInteger> primes = sql.PrimesReader();
-        Console.WriteLine("Readed");
         List<Task> tasks = new List<Task>();
         List<Task> tasks2 = new List<Task>();
         BigInteger firstNumberToCheck = primes[primes.Count - 1] + 2;
@@ -131,10 +146,6 @@ async Task Run()
         for (BigInteger numberToCheck = firstNumberToCheck; running & primes.Count >= 100 ;numberToCheck += parallelCount * 2)
         {
             sw.Start();
-            //Parallel.For(0, parallelCount, (i) =>
-            //{
-            //tasks2.Add(IsPrime(numberToCheck + (i * 2), primes));
-            //});
 
             for (int i = 0; i < parallelCount; i++)
             {
@@ -159,7 +170,7 @@ async Task Run()
             {
 
                 sw.Stop();
-                Console.WriteLine("couting tooks: " + sw.ElapsedMilliseconds);
+                Console.Write("couting tooks: " + sw.ElapsedMilliseconds);
                 if (tasks.Count > 0)
                 {
                     while (!tasks[0].IsCompleted & tasks.Count > 0)
@@ -170,9 +181,8 @@ async Task Run()
 
                 tasks.Clear();
                 var writingPrimes = primesToWrite.ToArray();
-                Console.WriteLine("count: {0}", primes.Count);
+                Console.Write(" count: {0} ", primes.Count);
                 await sql.PrimesWriter(writingPrimes);
-                Console.WriteLine("test2");
                 primesToWrite.Clear();
                 sw.Reset();
                 sw.Start();
@@ -234,9 +244,6 @@ async Task<bool> IsPrime(BigInteger number, List<BigInteger> primes)
             }
             });
         });
-
-        
-
         if (exit) return false;
         primes.Add(number);
         primesToWrite.Add(number);

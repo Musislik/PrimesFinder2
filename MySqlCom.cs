@@ -11,6 +11,8 @@ namespace Primes.Communication
     {
         public string ConnString { get { return connString; } }
         private string connString = "";
+        private int maxRowInTable = 1000000;
+        private int tableCount = 1;
         public bool State
         {
             get
@@ -52,7 +54,8 @@ namespace Primes.Communication
         }
         public void dbSetup()
         {
-            InsertCommand("use sys; delete from Primes where PrimeID > 0; ALTER TABLE Primes AUTO_INCREMENT=1;");
+            ProcedureReset();
+            InsertCommand("use sys; delete from Primes0 where PrimeID > 0; ALTER TABLE Primes AUTO_INCREMENT=1;");
             PrimesWriter(new BigInteger[] { new BigInteger(2), new BigInteger(3), new BigInteger(5), new BigInteger(7) });
         }
         public void InsertWritingCommand(string command, uint count)
@@ -148,10 +151,14 @@ namespace Primes.Communication
             }
             return 0;
         }
-        public List<BigInteger> PrimesReader()
+        public List<BigInteger> PrimesReader(int tableNumber)
         {
+            if (tableNumber == null ^ tableNumber > tableCount)
+            {
+                throw new Exception("Invalid arg.");
+            }
             var conn = new MySqlConnection(mySqlConnectionString_PrimesReader);
-            var cmd = new MySqlCommand("select * from Primes", conn);
+            var cmd = new MySqlCommand("select * from Primes" + tableNumber, conn);
             var primes = new List<BigInteger>();
             MySqlDataReader myData;
             UInt32 Size;
@@ -188,99 +195,182 @@ namespace Primes.Communication
         }
 
 
-
-
-        public async Task PrimesWriter(BigInteger[] values)
+        public async Task PrimesExport(List<BigInteger> Primes)
         {
-            var sw = new Stopwatch();
-            sw.Start();
-            string command = await ProcedureCallCommandReader(values.Length);
-            Console.WriteLine("ProcedureCallCommandReader: {0}ms", sw.ElapsedMilliseconds);
-            if (State)
+            string outputPath = "/share/";
+            string outputFileName = "Primes.txt";
+            string output = "Primes:\n";
+
+            try
             {
-                Console.WriteLine("state: {0}ms",sw.ElapsedMilliseconds);
+                Parallel.For(0, Primes.Count, (i) => { });
+
+                for (int i = 0; i < Primes.Count; i++)
+                {
+                    output += ("{0} : ",i);
+                    foreach (var byteOfPrime in Primes[i].ToByteArray())
+                    {
+                        output += (byteOfPrime + " ");
+                    }
+                    output += ("\n");
+                }
+            
+                await File.WriteAllTextAsync(outputPath + outputFileName, output);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+                throw;
+            }
+
+        }
+
+        public int LastPrimeId
+        {
+            get {
                 try
                 {
-                    await Write();
-                }                
+                    using (var connection = new MySqlConnection(mySqlConnectionString_PrimesReader))
+                    {
+                        var cmd = new MySqlCommand("select PrimeId from sys.Primes"+ (tableCount - 1) + ";", connection);
+                        MySqlDataReader myData;
+                        int PrimeId;
+                        byte[] rawData;
+
+                        connection.Open();
+                        myData = cmd.ExecuteReader();
+
+                        if (!myData.HasRows)
+                            throw new Exception("Chyba pøi ètení prvoèísla z LastPrime");
+
+                        myData.Read();
+                        PrimeId = myData.GetInt32(myData.GetOrdinal("PrimeID"));
+                        
+                        return PrimeId;
+                    }
+                }
                 catch (MySqlException e)
                 {
-                    Console.WriteLine("Unexpected fail. " + e.ToString());
-                    Console.WriteLine(e.ToString());
+
+                    System.Console.WriteLine(e.ToString());
                     throw;
                 }
             }
-            else
+        }
+        public async Task ProcedureReset()
+        {
+            Parallel.For(0, 1500, (i) => InsertCommand("DROP PROCEDURE `sys`.`Write" + i + "Primes`;"));
+            InsertCommand("delete from sys.WritingCommands where Count >= 0;");
+        }
+
+
+        public async Task PrimesWriter(BigInteger[] values)
+        {            
+            if (values.Length + LastPrimeId > maxRowInTable)
             {
-                Console.WriteLine("DB is not connected! Failed to write!");
+
+                var List1 = values.Take(maxRowInTable - LastPrimeId).ToList();
+                var List2 = values.Take(new Range(new Index(maxRowInTable - LastPrimeId),new Index(values.Length - 1)) ).ToList();
+                values = List1.ToArray();
+                await Start();
+                values = List2.ToArray();
+                await ProcedureReset();
+                tableCount++;
+                await Start();
+
             }
-            sw.Stop();
-            Console.WriteLine("Writing - {0} - {1}ms", values.Length, sw.ElapsedMilliseconds);
-
-
-            async Task Write()
+            async Task Start()
             {
-                using (var connection = new MySqlConnection(mySqlConnectionString_PrimesWriter))
+
+                var sw = new Stopwatch();
+                sw.Start();
+                string command = await ProcedureCallCommandReader(values.Length);
+                Console.WriteLine("ProcedureCallCommandReader: {0}ms", sw.ElapsedMilliseconds);
+                if (State)
                 {
-
-                    var Command = connection.CreateCommand();
-                    Command.CommandType = System.Data.CommandType.Text;
-                    Command.CommandText = command;
-
-                    for (int i = 0; i < values.Length; i++)
-                    { 
-                        var data = values[i].ToByteArray(true);
-                        Command.Parameters.Add(("@value" + i), MySqlDbType.LongBlob).Value = data;
-                        Command.Parameters.Add(("@size" + i), MySqlDbType.Int32).Value = values[i].GetByteCount(true);
-                    }
-
-                    await connection.OpenAsync();
                     try
                     {
-                        await Command.ExecuteNonQueryAsync();
+                        await Write();
                     }
-                    catch (MySqlException e) when (e.Number == 1305) //procedura neexistuje
+                    catch (MySqlException e)
                     {
-                        await connection.CloseAsync();
-                        await ProcedureCreator(values.Length);
+                        Console.WriteLine("Unexpected fail. " + e.ToString());
+                        Console.WriteLine(e.ToString());
+                        throw;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("DB is not connected! Failed to write!");
+                }
+                sw.Stop();
+                Console.WriteLine(" Writing - {0} - {1}ms ", values.Length, sw.ElapsedMilliseconds);
+
+
+                async Task Write()
+                {
+                    using (var connection = new MySqlConnection(mySqlConnectionString_PrimesWriter))
+                    {
+
+                        var Command = connection.CreateCommand();
+                        Command.CommandType = System.Data.CommandType.Text;
+                        Command.CommandText = command;
+
+                        for (int i = 0; i < values.Length; i++)
+                        {
+                            var data = values[i].ToByteArray(true);
+                            Command.Parameters.Add(("@value" + i), MySqlDbType.LongBlob).Value = data;
+                            Command.Parameters.Add(("@size" + i), MySqlDbType.Int32).Value = values[i].GetByteCount(true);
+                        }
+
                         await connection.OpenAsync();
-                        await Command.ExecuteNonQueryAsync();
+                        try
+                        {
+                            await Command.ExecuteNonQueryAsync();
+                        }
+                        catch (MySqlException e) when (e.Number == 1305) //procedura neexistuje
+                        {
+                            await connection.CloseAsync();
+                            await ProcedureCreator(values.Length);
+                            await connection.OpenAsync();
+                            await Command.ExecuteNonQueryAsync();
+                        }
                     }
                 }
-            }
-            
-            async Task<string> ProcedureCallCommandReader(int primesWriterCount)
-            {
-                var conn = new MySqlConnection(mySqlConnectionString_PrimesReader);
-                var cmd = new MySqlCommand("select CommandText from sys.WritingCommands where Count=" + primesWriterCount, conn);
-                string output = null;
 
-
-                conn.Open();
-                var myData = await cmd.ExecuteReaderAsync();
-
-                if (!myData.HasRows)
+                async Task<string> ProcedureCallCommandReader(int primesWriterCount)
                 {
-                    await ProcedureCreator(primesWriterCount);
-                    conn.Close();
+                    var conn = new MySqlConnection(mySqlConnectionString_PrimesReader);
+                    var cmd = new MySqlCommand("select CommandText from sys.WritingCommands where Count=" + primesWriterCount, conn);
+                    string output = null;
+
+
                     conn.Open();
-                    myData = await cmd.ExecuteReaderAsync();
-                }
-                try
-                {
-                    while (myData.Read())
-                    {
-                        output = myData.GetString("CommandText");
-                    }
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.ToString());
-                }
-                conn.Close();
-                return output;
-            }
+                    var myData = await cmd.ExecuteReaderAsync();
 
+                    if (!myData.HasRows)
+                    {
+                        await ProcedureCreator(primesWriterCount);
+                        conn.Close();
+                        conn.Open();
+                        myData = await cmd.ExecuteReaderAsync();
+                    }
+                    try
+                    {
+                        while (myData.Read())
+                        {
+                            output = myData.GetString("CommandText");
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.ToString());
+                    }
+                    conn.Close();
+                    return output;
+                }
+
+            }
         }
 
         
@@ -290,10 +380,10 @@ namespace Primes.Communication
             try
             {
 
-                Console.WriteLine("Creating procedure Write{0}Primes", primesWriterCount);
+                Console.WriteLine("Creating procedure Write{0}Primes" + tableCount, primesWriterCount);
                 var sw = new Stopwatch();
                 sw.Start();
-                string command = "USE `sys`; \nDROP procedure IF EXISTS `Write" + primesWriterCount + "Primes`; \nCREATE PROCEDURE `Write" + primesWriterCount + "Primes` (";
+                string command = "USE `sys`; \nDROP procedure IF EXISTS `Write" + primesWriterCount + "Primes" + tableCount + "`; \nCREATE PROCEDURE `Write" + primesWriterCount + "Primes" + tableCount + "` (";
 
                 for (int i = 0; i < primesWriterCount; i++)
                 {
@@ -305,7 +395,7 @@ namespace Primes.Communication
                     }
                     else
                     {
-                        command += ") \nBegin \nInsert into sys.Primes(Value, Size) Values";
+                        command += ") \nBegin \nInsert into sys.Primes" + tableCount + "(Value, Size) Values";
                     }
                 }
                 for (int i = 0; i < primesWriterCount; i++)
@@ -344,7 +434,7 @@ namespace Primes.Communication
         {
             var sw = new Stopwatch();
             sw.Start();
-            string commandText = "call Write" + primesWriterCount + "Primes(";
+            string commandText = "call Write" + primesWriterCount + "Primes" + tableCount + "(";
             string command = "insert into sys.WritingCommands(Count, CommandText) Values(" + primesWriterCount + ",@image);";
             for (int i = 0; i < primesWriterCount; i++)
             {
