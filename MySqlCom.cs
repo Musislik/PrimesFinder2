@@ -52,7 +52,7 @@ namespace Primes.Communication
         }
         public void dbSetup()
         {
-            InsertCommand("use sys; delete from Primes where PrimeID > 0; ALTER TABLE Primes AUTO_INCREMENT=1;");
+            InsertCommand("use sys; drop table Primes; USE `sys`; CREATE TABLE `sys`.`Primes` (`PrimeID` INT UNSIGNED NOT NULL AUTO_INCREMENT,  `Value` LONGBLOB NOT NULL,`Size` INT UNSIGNED NULL,PRIMARY KEY(`PrimeID`)) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8 COLLATE = utf8_czech_ci; ");
             PrimesWriter(new BigInteger[] { new BigInteger(2), new BigInteger(3), new BigInteger(5), new BigInteger(7) });
         }
         public void InsertWritingCommand(string command, uint count)
@@ -187,18 +187,13 @@ namespace Primes.Communication
             return primes;
         }
 
-
-
-
         public async Task PrimesWriter(BigInteger[] values)
         {
             var sw = new Stopwatch();
             sw.Start();
             string command = await ProcedureCallCommandReader(values.Length);
-            Console.WriteLine("ProcedureCallCommandReader: {0}ms", sw.ElapsedMilliseconds);
             if (State)
             {
-                Console.WriteLine("state: {0}ms",sw.ElapsedMilliseconds);
                 try
                 {
                     await Write();

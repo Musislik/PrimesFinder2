@@ -53,7 +53,9 @@ app.MapGet("/mysql/reset", () =>
     Console.WriteLine("Reset DB!");
     try
     {
+        global::System.Console.WriteLine("Reseting DB!");
         sql.dbReset();
+        global::System.Console.WriteLine("Done");
     }
     catch (Exception)
     {
@@ -67,6 +69,7 @@ app.MapGet("/mysql/setup", () =>
     try
     {
         sql.dbSetup();
+        global::System.Console.WriteLine("Done");
     }
     catch (Exception)
     {
@@ -109,8 +112,15 @@ async Task Run()
         Console.WriteLine("Reading primes");
         List<BigInteger> primes = sql.PrimesReader();
         Console.WriteLine("Readed");
-        List<Task> tasks = new List<Task>();
-        List<Task> tasks2 = new List<Task>();
+        Console.WriteLine("Checking");
+        int miss = 0;
+        Parallel.For(1, primes.Count-1, (i) => 
+        {
+            if (primes[i] < primes[i - 1]) miss++;
+        });
+        Console.WriteLine("miss: " + miss);
+        List<Task> writingTasks = new List<Task>();
+        List<Task> countingTasks = new List<Task>();
         BigInteger firstNumberToCheck = primes[primes.Count - 1] + 2;
 
         
@@ -131,66 +141,36 @@ async Task Run()
         for (BigInteger numberToCheck = firstNumberToCheck; running & primes.Count >= 100 ;numberToCheck += parallelCount * 2)
         {
             sw.Start();
-            //Parallel.For(0, parallelCount, (i) =>
-            //{
-            //tasks2.Add(IsPrime(numberToCheck + (i * 2), primes));
-            //});
-
-            for (int i = 0; i < parallelCount; i++)
+            Parallel.For(0, parallelCount, (i) =>
             {
-                tasks2.Add(IsPrime(numberToCheck + (i * 2), primes));
-            }
+                var response = IsPrime(numberToCheck + (i * 2), primes);
+                countingTasks.Add(response);
+            });
 
-            //Wait
-            if (tasks2.Count > 0)
-            {
-                for (int i = 0; i < tasks2.Count; i++)
-                {
-                    while (!tasks2[i].IsCompleted)
-                    {
-                        Console.WriteLine("Waiting");
-                        Thread.Sleep(10);                        
-                    }
-                }
-                tasks2.Clear();
-            }
+            //wait
+            await Task.WhenAll(countingTasks);
+
             //Write
             if (primesToWrite.Count > primesWriterCount || BigInteger.Pow(primes[primes.Count - 1], 2) <= numberToCheck)
             {
 
                 sw.Stop();
                 Console.WriteLine("couting tooks: " + sw.ElapsedMilliseconds);
-                if (tasks.Count > 0)
-                {
-                    while (!tasks[0].IsCompleted & tasks.Count > 0)
-                    {
-                        Thread.Sleep(10);
-                    }
-                }
-
-                tasks.Clear();
+                
+                primesToWrite.Sort();
                 var writingPrimes = primesToWrite.ToArray();
                 Console.WriteLine("count: {0}", primes.Count);
-                await sql.PrimesWriter(writingPrimes);
-                Console.WriteLine("test2");
+
+                await Task.WhenAll(writingTasks);
+                writingTasks.Clear();
+                var response = sql.PrimesWriter(writingPrimes);
+                writingTasks.Add(response);          
+
                 primesToWrite.Clear();
-                sw.Reset();
-                sw.Start();
+                sw.Restart();
             }
         };
-
-        if (tasks.Count > 0)
-        {
-            Console.WriteLine("Waiting");
-            while (!tasks[0].IsCompleted & tasks.Count > 0)
-            {
-                Thread.Sleep(10);                
-            }
-            Console.WriteLine("Done");
         }
-        var writingPrimes2 = primesToWrite.ToArray();
-        sql.PrimesWriter(writingPrimes2);
-    }
     catch (Exception e)
     {
         Console.WriteLine(e.Message);
@@ -224,9 +204,9 @@ async Task<bool> IsPrime(BigInteger number, List<BigInteger> primes)
                 Thread.Sleep(5);
             }
         }
-        Parallel.For(0, biggestIndex, async (i, aa) =>
+        Parallel.For(0, biggestIndex, (i, aa) =>
         {
-            await Task.Run( () => {
+            Task.Run( () => {
             if (number % primes[i] == 0)
             {
                 exit = true;
