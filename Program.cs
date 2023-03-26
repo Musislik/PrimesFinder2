@@ -13,6 +13,19 @@ var sql = new MySqlCom(connStringDB);
 Console.WriteLine("sql state: " + sql.State);
 int parallelCount = 1000, primesWriterCount = 500;
 var primesToWrite = new List<BigInteger>();
+enum LogType
+{
+    Start,
+    Stop,
+    ReadingPrimesStarted,
+    ReadingPrimesEnded,
+    WritingPrimesStarted,
+    WritingPrimesEnded,
+    CountingPrimesStarted,
+    CountingPrimesEnded
+
+}
+var logs = new List<int, LogType, int>;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +39,7 @@ app.MapGet("/start", () =>
 {
     if (!running)
     {
+        sw.Run();
         running = true;
         Task.Run(() => Run());
     }
