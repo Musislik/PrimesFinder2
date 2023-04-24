@@ -5,7 +5,7 @@ using System.Diagnostics;
 using Primes.Divisibility;
 
 bool running = false;
-//string connStringDB = "Server=88.101.172.29; Port=2606; Database=sys; ";
+//string connStringDB = "Server=(public ip); Port=2606; Database=sys; ";
 string connStringDB = "Server=PrimesDB; Port=3306; Database=sys; ";
 //string connStringDB = "Server=10.0.1.26; Port=3306; Database=sys; ";
 
