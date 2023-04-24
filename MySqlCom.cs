@@ -105,7 +105,7 @@ namespace Primes.Communication
         }
         
 
-        public async Task InsertCommand(string command)
+        private async Task InsertCommand(string command)
         {
             using (var connection = new MySqlConnection(mySqlConnectionString_Root))
             {
